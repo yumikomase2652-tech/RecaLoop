@@ -1,0 +1,6 @@
+@import "tailwindcss";
+:root{--ink:#17334a;--muted:#718398;--blue:#dff1ff;--mint:#dcf8ec;--yellow:#fff2b8;--line:#e8eef2}
+*{box-sizing:border-box} body{margin:0;background:#f8fbfc;color:var(--ink);font-family:Arial,"Hiragino Sans",sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}.card{background:white;border:1px solid var(--line);border-radius:22px;box-shadow:0 8px 28px #1c52690a}
+.pill{border-radius:999px;padding:.35rem .75rem;font-size:.75rem;font-weight:700}.btn{border:0;border-radius:14px;padding:.8rem 1rem;font-weight:800;transition:.2s}.btn:hover{transform:translateY(-1px)}
+.field{width:100%;border:1px solid #dfe9ee;background:white;border-radius:13px;padding:.8rem;outline:none}.field:focus{border-color:#75bff0;box-shadow:0 0 0 3px #dff1ff}
