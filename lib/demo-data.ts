@@ -1,14 +1,37 @@
-import type { AppData, MaterialNode, ReviewState, WordCard } from "./types";
-const now=new Date(),date=(days:number)=>{const d=new Date(now);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)},iso=now.toISOString();
-const state=(rating:"again"|"hard"|"good"|"easy"|null,days:number):ReviewState=>({last_rating:rating,unknown_flag:rating==="hard",review_count:rating?2:0,due_at:rating?new Date(now.getTime()+days*86400000).toISOString():null,next_review_date:rating?date(days):null});
-export const demoMaterialNodes:MaterialNode[]=[
- {id:"m-folder-1",deck_id:"deck-1",parent_id:null,node_type:"folder",title:"第1章 物質の構成",memo:null,order_index:0,created_at:iso},
- {id:"m-folder-2",deck_id:"deck-1",parent_id:"m-folder-1",node_type:"folder",title:"第1回 原子",memo:null,order_index:0,created_at:iso},
- {id:"m-item-1",deck_id:"deck-1",parent_id:"m-folder-2",node_type:"item",title:"問1",memo:"周期表を確認",order_index:0,created_at:iso,state:state("hard",0)},
- {id:"m-item-2",deck_id:"deck-1",parent_id:"m-folder-2",node_type:"item",title:"問2",memo:null,order_index:1,created_at:iso,state:state("good",3)},
+import type { AppData, MaterialNode, ReviewState, TitleDefinition, WordCard } from "./types";
+
+const now = new Date();
+const iso = now.toISOString();
+const date = (days: number) => { const value = new Date(now); value.setDate(value.getDate() + days); return value.toISOString().slice(0, 10); };
+const state = (rating: "again" | "hard" | "good" | "easy" | null, days: number): ReviewState => ({ last_rating: rating, unknown_flag: rating === "hard", review_count: rating ? 2 : 0, due_at: rating ? new Date(now.getTime() + days * 86400000).toISOString() : null, next_review_date: rating ? date(days) : null });
+
+export const demoMaterialNodes: MaterialNode[] = [
+  { id: "m-folder-1", deck_id: "deck-1", parent_id: null, node_type: "folder", title: "第1章 物質の構成", memo: null, order_index: 0, created_at: iso },
+  { id: "m-folder-2", deck_id: "deck-1", parent_id: "m-folder-1", node_type: "folder", title: "第1回 原子", memo: null, order_index: 0, created_at: iso },
+  { id: "m-item-1", deck_id: "deck-1", parent_id: "m-folder-2", node_type: "item", title: "問1", memo: "周期表を確認", order_index: 0, created_at: iso, state: state("hard", 0) },
+  { id: "m-item-2", deck_id: "deck-1", parent_id: "m-folder-2", node_type: "item", title: "問2", memo: null, order_index: 1, created_at: iso, state: state("good", 3) },
 ];
-export const demoWordCards:WordCard[]=[
- {id:"w-1",list_id:"list-1",card_id:"001",front:"apple",back:"りんご",memo:"名詞",order_index:0,created_at:iso,state:state("again",0)},
- {id:"w-2",list_id:"list-1",card_id:"A-12",front:"review",back:"復習する",memo:"動詞",order_index:1,created_at:iso,state:state("easy",7)},
+export const demoWordCards: WordCard[] = [
+  { id: "w-1", list_id: "list-1", card_id: "001", front: "apple", back: "りんご", memo: "名詞", order_index: 0, created_at: iso, state: state("again", 0) },
+  { id: "w-2", list_id: "list-1", card_id: "A-12", front: "review", back: "復習する", memo: "動詞", order_index: 1, created_at: iso, state: state("easy", 7) },
 ];
-export const demoData:AppData={profile:{id:"demo-user",display_name:"デモユーザー",coin_balance:0,created_at:iso},materialDecks:[{id:"deck-1",user_id:"demo-user",title:"エクセル化学",subject:null,description:"問題番号だけを管理",is_public:false,share_token:"demo-material",created_at:iso}],materialNodes:demoMaterialNodes,materialAttempts:[{id:"ma-1",user_id:"demo-user",material_node_id:"m-item-1",rating:"hard",unknown_flag:true,reviewed_at:iso,created_at:iso}],wordLists:[{id:"list-1",user_id:"demo-user",title:"英単語100",subject:null,description:"自作暗記カード",is_public:false,share_token:"demo-cards",created_at:iso}],wordCards:demoWordCards,wordAttempts:[{id:"wa-1",user_id:"demo-user",word_card_id:"w-1",rating:"again",unknown_flag:false,reviewed_at:iso,created_at:iso}]};
+
+const demoTitles: TitleDefinition[] = [
+  { id: "title-apprentice", title_key: "exp:100", display_name: "見習い学習者", title_type: "level", condition_json: { required_exp: 100 }, created_at: iso },
+  { id: "title-starter", title_key: "exp:500", display_name: "学び始めた者", title_type: "level", condition_json: { required_exp: 500 }, created_at: iso },
+  { id: "title-continuity", title_key: "exp:1000", display_name: "継続の達人", title_type: "level", condition_json: { required_exp: 1000 }, created_at: iso },
+  { id: "title-effort", title_key: "exp:2000", display_name: "努力の証", title_type: "level", condition_json: { required_exp: 2000 }, created_at: iso },
+  { id: "title-deck-1", title_key: "deck_completion:material:deck-1", display_name: "エクセル化学 完走", title_type: "deck_completion", condition_json: { source_type: "material", source_id: "deck-1" }, created_at: iso },
+];
+
+export const demoData: AppData = {
+  profile: { id: "demo-user", display_name: "デモユーザー", coin_balance: 0, is_admin: true, total_exp: 1995, level: 20, equipped_title_id: "title-continuity", target_school: "第一志望大学", exam_year: 2027, study_goal: "毎日20問", created_at: iso },
+  titles: demoTitles,
+  userTitles: demoTitles.slice(0, 3).map((title, index) => ({ id: `user-title-${index}`, user_id: "demo-user", title_id: title.id, source_type: title.title_type === "level" ? "level" : "material", source_id: null, earned_at: new Date(now.getTime() - index * 86400000).toISOString(), title })),
+  materialDecks: [{ id: "deck-1", user_id: "demo-user", title: "エクセル化学", subject: null, description: "問題番号だけを管理", is_public: true, share_token: "demo-material", visibility: "approved", approved_at: iso, created_by_user_id: "demo-user", copy_count: 1256, updated_at: iso, created_at: iso }],
+  materialNodes: demoMaterialNodes,
+  materialAttempts: [{ id: "ma-1", user_id: "demo-user", material_node_id: "m-item-1", rating: "hard", unknown_flag: true, action: "review", reviewed_at: iso, created_at: iso }],
+  wordLists: [{ id: "list-1", user_id: "demo-user", title: "英単語100", subject: null, description: "自作暗記カード", is_public: false, share_token: "demo-cards", visibility: "submitted", submitted_at: iso, submission_kind: "initial", created_by_user_id: "demo-user", copy_count: 3, updated_at: iso, created_at: iso }],
+  wordCards: demoWordCards,
+  wordAttempts: [{ id: "wa-1", user_id: "demo-user", word_card_id: "w-1", rating: "again", unknown_flag: false, action: "review", reviewed_at: iso, created_at: iso }],
+};
