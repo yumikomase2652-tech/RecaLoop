@@ -1,0 +1,1 @@
+import type{MetadataRoute}from"next";export default function manifest():MetadataRoute.Manifest{return{name:"RecaLoop",short_name:"RecaLoop",description:"教材と暗記カードを復習までループさせる学習アプリ",start_url:"/dashboard",display:"standalone",background_color:"#f4f7f8",theme_color:"#17334a",orientation:"portrait",icons:[{src:"/icon.svg",sizes:"any",type:"image/svg+xml",purpose:"any"}]}}

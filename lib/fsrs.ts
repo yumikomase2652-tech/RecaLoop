@@ -1,0 +1,2 @@
+import type { Rating, ReviewState } from "./types";
+export function calculateNextReview(rating:Rating,current?:Partial<ReviewState>,reviewedAt=new Date()):ReviewState{const days={again:0,hard:1,good:3,easy:7}[rating],due=new Date(reviewedAt);due.setDate(due.getDate()+days);return{last_rating:rating,unknown_flag:Boolean(current?.unknown_flag),review_count:(current?.review_count||0)+1,due_at:due.toISOString(),next_review_date:due.toISOString().slice(0,10)}}
