@@ -24,7 +24,7 @@ export function RankingsApp() {
     {error && <p className="notice mt-5">{error}</p>}
     <div className="space-y-10 mt-8">{sections.map(({ title, icon: Icon, items: ranked }) => <section key={title}>
       <h2 className="font-black flex items-center gap-2"><Icon size={18} />{title}</h2>
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3">{ranked.slice(0, 6).map((item, index) => <article className="surface p-5" key={`${title}-${item.content_type}-${item.id}`}>
+      <div className="grid md:grid-cols-2 gap-4 mt-3">{ranked.slice(0, 6).map((item, index) => <article className="surface p-5" key={`${title}-${item.content_type}-${item.id}`}>
         <div className="flex justify-between"><span className="tag neutral">{item.content_type === "material" ? <><BookOpen size={12} />教材</> : <><Layers3 size={12} />暗記カード</>}</span><b className="text-sm text-[#9a7a24]">#{index + 1}</b></div>
         <h3 className="font-black mt-3">{item.title}</h3><p className="text-xs text-[#71818d] mt-1">作成者 {item.creator_name}</p>
         <div className="ranking-stats"><Stat label="コピー" value={item.copy_count} /><Stat label="平均進捗" value={percent(item.average_progress)} /><Stat label="完走率" value={percent(item.completion_rate)} /><Stat label="継続率" value={percent(item.continuation_rate)} /></div>
