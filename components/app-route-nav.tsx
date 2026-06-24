@@ -29,8 +29,10 @@ export function AppRouteNav({ active }: { active: string }) {
   }, []);
   const roleItem = role === "teacher"
     ? (["students", "生徒", Users, "/dashboard?view=students"] as const)
-    : (["assignments", "課題", ClipboardList, "/dashboard?view=assignments"] as const);
-  const navItems = [...items, roleItem, ["settings", "設定", Settings, "/dashboard?view=settings"] as const];
+    : role === "student"
+      ? (["assignments", "課題", ClipboardList, "/dashboard?view=assignments"] as const)
+      : null;
+  const navItems = [...items, ...(roleItem ? [roleItem] : []), ["settings", "設定", Settings, "/dashboard?view=settings"] as const];
   return <>
     <aside className="app-sidebar">
       {navItems.map(([id, label, Icon, href]) => <Link key={id} href={href} className={active === id ? "active" : ""}><Icon size={18} />{label}</Link>)}

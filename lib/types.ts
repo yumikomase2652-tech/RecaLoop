@@ -17,7 +17,7 @@ export interface WordAttempt { id:string; user_id:string; word_card_id:string; r
 export interface StudySession { id:string; user_id:string; started_at:string; ended_at:string|null; duration_minutes:number|null; related_type:"material_deck"|"word_list"; related_id:string|null; created_at:string }
 export interface ExpTransaction { id:string; user_id:string; amount:number; reason:string; reference_key?:string|null; created_at:string }
 export interface ReviewTarget { id:string; target_type:TargetType; group_id:string; group_title:string; context?:string; title:string; card_id?:string|null; front?:string; back?:string; memo?:string|null; state:ReviewState }
-export interface TeacherStudentLink { id:string; teacher_id:string; student_id:string|null; invite_code:string; status:"pending"|"active"; created_at:string; student?:Profile|null; teacher?:Profile|null }
+export interface TeacherStudentLink { id:string; teacher_id:string; student_id:string|null; invite_code:string; status:"pending"|"active"|"inactive"; created_at:string; updated_at?:string; student?:Profile|null; teacher?:Profile|null }
 export interface Assignment { id:string; teacher_id:string; student_id:string; title:string; due_date:string; status:"active"|"completed"; created_at:string; student?:Profile|null; teacher?:Profile|null }
 export interface AssignmentItem { id:string; assignment_id:string; target_type:"material_item"|"word_card"; target_id:string; status:"assigned"|"done"; created_at:string; completed_at:string|null }
 export interface StudyPlan { id:string; user_id:string; deck_type:TargetType; deck_id:string; title:string; start_date:string; end_date:string|null; created_at:string }

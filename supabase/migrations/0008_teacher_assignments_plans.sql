@@ -9,10 +9,16 @@ create table if not exists public.teacher_student_links(
  teacher_id uuid not null references public.profiles(id)on delete cascade,
  student_id uuid references public.profiles(id)on delete cascade,
  invite_code text not null unique,
- status text not null default 'pending' check(status in('pending','active')),
+ status text not null default 'pending' check(status in('pending','active','inactive')),
  created_at timestamptz not null default now(),
+ updated_at timestamptz not null default now(),
  unique(teacher_id,student_id)
 );
+alter table public.teacher_student_links add column if not exists updated_at timestamptz not null default now();
+alter table public.teacher_student_links drop constraint if exists teacher_student_links_status_check;
+alter table public.teacher_student_links add constraint teacher_student_links_status_check check(status in('pending','active','inactive'));
+alter table public.teacher_student_links drop constraint if exists teacher_student_links_teacher_id_student_id_key;
+create unique index if not exists teacher_student_links_active_pair_idx on public.teacher_student_links(teacher_id,student_id) where status='active' and student_id is not null;
 create table if not exists public.assignments(
  id uuid primary key default gen_random_uuid(),
  teacher_id uuid not null references public.profiles(id)on delete cascade,
@@ -63,6 +69,7 @@ grant select,insert,update,delete on public.study_plan_items to authenticated;
 grant update(role)on public.profiles to authenticated;
 
 drop function if exists public.create_invite_code();
+drop function if exists public.create_invite_code(boolean);
 create or replace function public.create_invite_code(p_refresh boolean default false)returns text language plpgsql security definer set search_path=public as $$
 declare code text;begin
  if not exists(select 1 from profiles where id=auth.uid()and role='teacher')then raise exception'教師権限が必要です';end if;
@@ -70,15 +77,27 @@ declare code text;begin
   select invite_code into code from teacher_student_links where teacher_id=auth.uid()and student_id is null and status='pending' order by created_at desc limit 1;
   if code is not null then return code;end if;
  end if;
+ update teacher_student_links set status='inactive',updated_at=now() where teacher_id=auth.uid()and student_id is null and status='pending';
  code:=upper(substr(replace(gen_random_uuid()::text,'-',''),1,8));
  insert into teacher_student_links(teacher_id,invite_code,status)values(auth.uid(),code,'pending');
  return code;
 end$$;
 create or replace function public.join_teacher(p_invite_code text)returns void language plpgsql security definer set search_path=public as $$
-begin
- update teacher_student_links set student_id=auth.uid(),status='active' where invite_code=upper(trim(p_invite_code))and student_id is null;
- if not found then raise exception'招待コードが見つかりません';end if;
+declare target_link uuid;target_teacher uuid;begin
+ select id,teacher_id into target_link,target_teacher from teacher_student_links where invite_code=upper(trim(p_invite_code))and student_id is null and status='pending' limit 1;
+ if target_link is null then raise exception'招待コードが見つかりません。最新のコードを確認してください';end if;
+ update teacher_student_links set status='inactive',updated_at=now() where student_id=auth.uid()and status='active';
+ delete from teacher_student_links where teacher_id=target_teacher and student_id=auth.uid() and status<>'active';
+ update teacher_student_links set student_id=auth.uid(),status='active',updated_at=now() where id=target_link;
 end$$;
+create or replace function public.unlink_teacher_student(p_link_id uuid)returns void language plpgsql security definer set search_path=public as $$
+begin
+ update teacher_student_links set status='inactive',updated_at=now() where id=p_link_id and status='active' and(teacher_id=auth.uid()or student_id=auth.uid());
+ if not found then raise exception'連携を解除できませんでした';end if;
+end$$;
+grant execute on function public.create_invite_code(boolean) to authenticated;
+grant execute on function public.join_teacher(text) to authenticated;
+grant execute on function public.unlink_teacher_student(uuid) to authenticated;
 create or replace function public.create_assignment(p_student_id uuid,p_title text,p_due_date date,p_items jsonb)returns uuid language plpgsql security definer set search_path=public as $$
 declare result uuid;item jsonb;begin
  if not exists(select 1 from profiles where id=auth.uid()and role='teacher')then raise exception'教師権限が必要です';end if;
