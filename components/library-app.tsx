@@ -80,7 +80,6 @@ export function LibraryApp() {
             {item.content_type === "material" ? <BookOpen size={18} /> : <Layers3 size={18} />}
           </div>
           <h2 className="font-black text-lg mt-4">{item.title}</h2>
-          <p className="text-xs text-[#71818d] mt-2">作成者 {item.creator_name}</p>
           <div className="flex gap-4 text-xs text-[#71818d] mt-4">
             <span>{item.item_count}{item.content_type === "material" ? "問" : "枚"}</span>
             <span>{item.copy_count}コピー</span>
