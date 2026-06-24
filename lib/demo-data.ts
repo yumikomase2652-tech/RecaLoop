@@ -26,7 +26,7 @@ const demoTitles: TitleDefinition[] = [
 ];
 
 export const demoData: AppData = {
-  profile: { id: "demo-user", display_name: "デモユーザー", coin_balance: 0, is_admin: true, total_exp: 1995, level: 20, equipped_title_id: "title-continuity", target_school: "東京大学", grade_level: "高校3年生", grade_updated_year: now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1, onboarding_completed: true, created_at: iso },
+  profile: { id: "demo-user", display_name: "デモユーザー", coin_balance: 0, is_admin: true, role: "student", total_exp: 1995, level: 20, equipped_title_id: "title-continuity", target_school: "東京大学", grade_level: "高校3年生", grade_updated_year: now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1, onboarding_completed: true, created_at: iso },
   titles: demoTitles,
   userTitles: demoTitles.slice(0, 4).map((title, index) => ({ id: `user-title-${index}`, user_id: "demo-user", title_id: title.id, source_type: title.title_type === "deck_completion" ? "material" : title.title_type, source_id: null, earned_at: new Date(now.getTime() - index * 86400000).toISOString(), title })),
   materialDecks: [{ id: "deck-1", user_id: "demo-user", title: "エクセル化学", subject: null, description: "問題番号だけを管理", is_public: true, share_token: "demo-material", visibility: "approved", approved_at: iso, created_by_user_id: "demo-user", copy_count: 1256, updated_at: iso, created_at: iso }],
@@ -37,4 +37,9 @@ export const demoData: AppData = {
   wordAttempts: [{ id: "wa-1", user_id: "demo-user", word_card_id: "w-1", rating: "again", unknown_flag: false, action: "review", reviewed_at: iso, created_at: iso }],
   studySessions: [{ id: "session-1", user_id: "demo-user", started_at: iso, ended_at: iso, duration_minutes: 18, related_type: "material_deck", related_id: "deck-1", created_at: iso }],
   expTransactions: [{ id: "exp-1", user_id: "demo-user", amount: 5, reason: "review_complete", reference_key: "demo-review", created_at: iso }],
+  teacherLinks: [{ id: "link-1", teacher_id: "teacher-demo", student_id: "demo-user", invite_code: "DEMO123", status: "active", created_at: iso, teacher: { id: "teacher-demo", display_name: "デモ先生", coin_balance: 0, role: "teacher", created_at: iso }, student: null }],
+  assignments: [{ id: "assignment-1", teacher_id: "teacher-demo", student_id: "demo-user", title: "エクセル化学 今日の課題", due_date: date(1), status: "active", created_at: iso }],
+  assignmentItems: [{ id: "assignment-item-1", assignment_id: "assignment-1", target_type: "material_item", target_id: "m-item-1", status: "assigned", created_at: iso, completed_at: null }],
+  studyPlans: [{ id: "plan-1", user_id: "demo-user", deck_type: "material", deck_id: "deck-1", title: "エクセル化学 計画", start_date: date(0), end_date: date(7), created_at: iso }],
+  studyPlanItems: [{ id: "plan-item-1", plan_id: "plan-1", target_type: "material_item", target_id: "m-item-1", scheduled_date: date(0), status: "planned", created_at: iso, completed_at: null }],
 };

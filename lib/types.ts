@@ -3,7 +3,8 @@ export type TargetType = "material" | "word";
 
 export type Visibility="private"|"unlisted"|"submitted"|"approved"|"rejected";
 export type GradeLevel="中学1年生"|"中学2年生"|"中学3年生"|"高校1年生"|"高校2年生"|"高校3年生"|"浪人生";
-export interface Profile { id:string; display_name:string; coin_balance:number; is_admin?:boolean; total_exp?:number; level?:number; equipped_title_id?:string|null; target_school?:string|null; grade_level?:GradeLevel|null; grade_updated_year?:number|null; onboarding_completed?:boolean; created_at:string }
+export type UserRole="student"|"teacher";
+export interface Profile { id:string; display_name:string; coin_balance:number; is_admin?:boolean; role?:UserRole; total_exp?:number; level?:number; equipped_title_id?:string|null; target_school?:string|null; grade_level?:GradeLevel|null; grade_updated_year?:number|null; onboarding_completed?:boolean; created_at:string }
 export interface TitleDefinition { id:string; title_key:string; display_name:string; title_type:"level"|"deck_completion"|"streak"; condition_json:Record<string,unknown>; created_at:string }
 export interface UserTitle { id:string; user_id:string; title_id:string; source_type:string|null; source_id:string|null; earned_at:string; title:TitleDefinition }
 export interface ReviewState { last_rating:Rating|null; unknown_flag:boolean; review_count:number; due_at:string|null; next_review_date:string|null }
@@ -16,8 +17,13 @@ export interface WordAttempt { id:string; user_id:string; word_card_id:string; r
 export interface StudySession { id:string; user_id:string; started_at:string; ended_at:string|null; duration_minutes:number|null; related_type:"material_deck"|"word_list"; related_id:string|null; created_at:string }
 export interface ExpTransaction { id:string; user_id:string; amount:number; reason:string; reference_key?:string|null; created_at:string }
 export interface ReviewTarget { id:string; target_type:TargetType; group_id:string; group_title:string; context?:string; title:string; card_id?:string|null; front?:string; back?:string; memo?:string|null; state:ReviewState }
-export interface AppData { profile:Profile|null; titles:TitleDefinition[]; userTitles:UserTitle[]; materialDecks:MaterialDeck[]; materialNodes:MaterialNode[]; materialAttempts:MaterialAttempt[]; wordLists:WordList[]; wordCards:WordCard[]; wordAttempts:WordAttempt[]; studySessions:StudySession[]; expTransactions:ExpTransaction[] }
-export interface CsvPreview<T> { rows:T[]; itemCount:number; duplicateKeys:string[]; skippedHeader:boolean }
+export interface TeacherStudentLink { id:string; teacher_id:string; student_id:string|null; invite_code:string; status:"pending"|"active"; created_at:string; student?:Profile|null; teacher?:Profile|null }
+export interface Assignment { id:string; teacher_id:string; student_id:string; title:string; due_date:string; status:"active"|"completed"; created_at:string; student?:Profile|null; teacher?:Profile|null }
+export interface AssignmentItem { id:string; assignment_id:string; target_type:"material_item"|"word_card"; target_id:string; status:"assigned"|"done"; created_at:string; completed_at:string|null }
+export interface StudyPlan { id:string; user_id:string; deck_type:TargetType; deck_id:string; title:string; start_date:string; end_date:string|null; created_at:string }
+export interface StudyPlanItem { id:string; plan_id:string; target_type:"material_item"|"word_card"; target_id:string; scheduled_date:string; status:"planned"|"done"|"skipped"; created_at:string; completed_at:string|null }
+export interface AppData { profile:Profile|null; titles:TitleDefinition[]; userTitles:UserTitle[]; materialDecks:MaterialDeck[]; materialNodes:MaterialNode[]; materialAttempts:MaterialAttempt[]; wordLists:WordList[]; wordCards:WordCard[]; wordAttempts:WordAttempt[]; studySessions:StudySession[]; expTransactions:ExpTransaction[]; teacherLinks:TeacherStudentLink[]; assignments:Assignment[]; assignmentItems:AssignmentItem[]; studyPlans:StudyPlan[]; studyPlanItems:StudyPlanItem[] }
+export interface CsvPreview<T> { rows:T[]; itemCount:number; duplicateKeys:string[]; skippedHeader:boolean; columns?:Record<string,string> }
 export interface SharedMaterial { deck:MaterialDeck; nodes:MaterialNode[] }
 export interface SharedCards { list:WordList; cards:WordCard[] }
 export interface ClearTitle { name:string; count:number }

@@ -61,12 +61,12 @@ export function LibraryApp() {
        </div>
        <Link href="/rankings" className="secondary-button"><Trophy size={16} />ランキング</Link>
       </div>
-      <div className="surface p-3 mt-7 flex flex-col md:flex-row gap-3">
-        <div className="flex-1 relative">
-          <Search size={17} className="absolute left-3 top-3.5 text-[#81919c]" />
-          <input className="field !pl-10" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" && search()} placeholder="タイトルで検索" />
+      <div className="deck-toolbar">
+        <div className="deck-search">
+          <Search size={16} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === "Enter" && search()} placeholder="タイトルで検索" />
         </div>
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="deck-filters">
           {[["all", "すべて"], ["material", "問題集"], ["cards", "暗記カード"]].map(([id, label]) =>
             <button key={id} onClick={() => changeType(id)} className={`filter-chip ${type === id ? "active" : ""}`}>{label}</button>)}
           <button onClick={() => search()} className="primary-button">検索</button>

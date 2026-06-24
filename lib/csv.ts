@@ -9,4 +9,17 @@ export function previewMaterialCsv(text:string,deckId:string):CsvPreview<Materia
   nodes.push({id:`csv-i-${rowIndex}`,deck_id:deckId,parent_id:parent,node_type:"item",title:cells.at(-1)!,memo:null,order_index:rowIndex,created_at:new Date().toISOString()});
  });return{rows:nodes,itemCount:nodes.filter(n=>n.node_type==="item").length,duplicateKeys:[...duplicates],skippedHeader:header};
 }
-export function previewWordCsv(text:string,listId:string):CsvPreview<WordCard>{const input=parse(text);if(!input.length)return{rows:[],itemCount:0,duplicateKeys:[],skippedHeader:false};const first=input[0].map(v=>v.toLowerCase()),newHeader=first[0]==="card_id"&&first[1]==="front"&&first[2]==="back",legacyHeader=first[0]==="front"&&first[1]==="back",header=newHeader||legacyHeader,rows=header?input.slice(1):input,seen=new Set<string>(),duplicates=new Set<string>(),cards:WordCard[]=[];rows.forEach((r,i)=>{const modern=newHeader||(!legacyHeader&&!header&&r.length>=4),cardId=modern?r[0]||null:null,front=modern?r[1]:r[0],back=modern?r[2]:r[1],memo=(modern?r[3]:r[2])||null;if(!front||!back)return;const key=cardId||`${front}\u0000${back}`;if(seen.has(key))duplicates.add(cardId||`${front} / ${back}`);seen.add(key);cards.push({id:`csv-w-${i}`,list_id:listId,card_id:cardId,front,back,memo,order_index:i,created_at:new Date().toISOString()})});return{rows:cards,itemCount:cards.length,duplicateKeys:[...duplicates],skippedHeader:header}}
+export function previewWordCsv(text:string,listId:string):CsvPreview<WordCard>{
+ const input=parse(text);if(!input.length)return{rows:[],itemCount:0,duplicateKeys:[],skippedHeader:false,columns:{}};
+ const first=input[0].map(v=>v.toLowerCase()),hasHeader=first.includes("front")&&first.includes("back"),header=hasHeader?first:[],rows=hasHeader?input.slice(1):input;
+ const idx=(name:string)=>header.indexOf(name),idIndex=hasHeader?Math.max(idx("card_id"),idx("id")):-1,frontIndex=hasHeader?idx("front"):-1,backIndex=hasHeader?idx("back"):-1,memoIndex=hasHeader?idx("memo"):-1;
+ const seen=new Set<string>(),duplicates=new Set<string>(),cards:WordCard[]=[];
+ rows.forEach((r,i)=>{let cardId:string|null=null,front="",back="",memo:string|null=null;
+  if(hasHeader){cardId=idIndex>=0?r[idIndex]||null:null;front=r[frontIndex]||"";back=r[backIndex]||"";memo=memoIndex>=0?r[memoIndex]||null:null}
+  else if(r.length>=3){cardId=r[0]||null;front=r[1]||"";back=r[2]||"";memo=r[3]||null}
+  else{front=r[0]||"";back=r[1]||"";memo=r[2]||null}
+  if(!front||!back)return;const key=cardId||`${front}\u0000${back}`;if(seen.has(key))duplicates.add(cardId||`${front} / ${back}`);seen.add(key);cards.push({id:`csv-w-${i}`,list_id:listId,card_id:cardId,front,back,memo,order_index:i,created_at:new Date().toISOString()})
+ });
+ const columns=hasHeader?{card_id:idIndex>=0?String(idIndex+1):"なし",front:String(frontIndex+1),back:String(backIndex+1),memo:memoIndex>=0?String(memoIndex+1):"なし"}:rows[0]?.length>=3?{card_id:"1",front:"2",back:"3",memo:rows[0]?.length>=4?"4":"なし"}:{card_id:"なし",front:"1",back:"2",memo:rows[0]?.length>=3?"3":"なし"};
+ return{rows:cards,itemCount:cards.length,duplicateKeys:[...duplicates],skippedHeader:hasHeader,columns}
+}
