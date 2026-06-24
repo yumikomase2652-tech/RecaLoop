@@ -62,9 +62,14 @@ grant select,insert,update,delete on public.study_plans to authenticated;
 grant select,insert,update,delete on public.study_plan_items to authenticated;
 grant update(role)on public.profiles to authenticated;
 
-create or replace function public.create_invite_code()returns text language plpgsql security definer set search_path=public as $$
+drop function if exists public.create_invite_code();
+create or replace function public.create_invite_code(p_refresh boolean default false)returns text language plpgsql security definer set search_path=public as $$
 declare code text;begin
  if not exists(select 1 from profiles where id=auth.uid()and role='teacher')then raise exception'教師権限が必要です';end if;
+ if not p_refresh then
+  select invite_code into code from teacher_student_links where teacher_id=auth.uid()and student_id is null and status='pending' order by created_at desc limit 1;
+  if code is not null then return code;end if;
+ end if;
  code:=upper(substr(replace(gen_random_uuid()::text,'-',''),1,8));
  insert into teacher_student_links(teacher_id,invite_code,status)values(auth.uid(),code,'pending');
  return code;
