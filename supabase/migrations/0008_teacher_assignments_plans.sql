@@ -51,15 +51,12 @@ alter table public.assignment_items enable row level security;
 alter table public.study_plans enable row level security;
 alter table public.study_plan_items enable row level security;
 drop policy if exists "profiles linked read" on public.profiles;
-create policy "profiles linked read" on public.profiles for select using(
- id=auth.uid()or exists(
-  select 1 from public.teacher_student_links l
-  where l.status='active'and(
-   (l.teacher_id=auth.uid()and l.student_id=profiles.id)or
-   (l.student_id=auth.uid()and l.teacher_id=profiles.id)
-  )
- )
-);
+drop policy if exists "profile own read" on public.profiles;
+drop policy if exists "profile own editable fields" on public.profiles;
+drop policy if exists "profile own insert" on public.profiles;
+create policy "profile own read" on public.profiles for select using(id=auth.uid());
+create policy "profile own editable fields" on public.profiles for update using(id=auth.uid())with check(id=auth.uid());
+create policy "profile own insert" on public.profiles for insert with check(id=auth.uid());
 drop policy if exists "links own" on public.teacher_student_links;
 create policy "links own" on public.teacher_student_links for select using(teacher_id=auth.uid()or student_id=auth.uid()or(student_id is null and teacher_id=auth.uid()));
 drop policy if exists "assignments own linked" on public.assignments;
@@ -108,6 +105,18 @@ end$$;
 grant execute on function public.create_invite_code(boolean) to authenticated;
 grant execute on function public.join_teacher(text) to authenticated;
 grant execute on function public.unlink_teacher_student(uuid) to authenticated;
+create or replace function public.linked_profiles()returns setof public.profiles language sql security definer set search_path=public as $$
+ select p.* from public.profiles p
+ where p.id=auth.uid()
+    or exists(
+     select 1 from public.teacher_student_links l
+     where l.status='active'and(
+      (l.teacher_id=auth.uid()and l.student_id=p.id)or
+      (l.student_id=auth.uid()and l.teacher_id=p.id)
+     )
+    )
+$$;
+grant execute on function public.linked_profiles() to authenticated;
 create or replace function public.create_assignment(p_student_id uuid,p_title text,p_due_date date,p_items jsonb)returns uuid language plpgsql security definer set search_path=public as $$
 declare result uuid;item jsonb;begin
  if not exists(select 1 from profiles where id=auth.uid()and role='teacher')then raise exception'教師権限が必要です';end if;
