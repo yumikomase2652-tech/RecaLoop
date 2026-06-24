@@ -3,7 +3,7 @@ export type TargetType = "material" | "word";
 
 export type Visibility="private"|"unlisted"|"submitted"|"approved"|"rejected";
 export type GradeLevel="中学1年生"|"中学2年生"|"中学3年生"|"高校1年生"|"高校2年生"|"高校3年生"|"浪人生";
-export type UserRole="student"|"teacher";
+export type UserRole="none"|"student"|"teacher";
 export interface Profile { id:string; display_name:string; coin_balance:number; is_admin?:boolean; role?:UserRole; total_exp?:number; level?:number; equipped_title_id?:string|null; target_school?:string|null; grade_level?:GradeLevel|null; grade_updated_year?:number|null; onboarding_completed?:boolean; created_at:string }
 export interface TitleDefinition { id:string; title_key:string; display_name:string; title_type:"level"|"deck_completion"|"streak"; condition_json:Record<string,unknown>; created_at:string }
 export interface UserTitle { id:string; user_id:string; title_id:string; source_type:string|null; source_id:string|null; earned_at:string; title:TitleDefinition }

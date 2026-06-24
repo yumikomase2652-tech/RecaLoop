@@ -1,7 +1,8 @@
-alter table public.profiles add column if not exists role text not null default 'student';
+alter table public.profiles add column if not exists role text not null default 'none';
 alter table public.profiles drop constraint if exists profiles_role_check;
-alter table public.profiles add constraint profiles_role_check check(role in('student','teacher'));
-update public.profiles set role='student' where role is null;
+alter table public.profiles add constraint profiles_role_check check(role in('none','student','teacher'));
+alter table public.profiles alter column role set default 'none';
+update public.profiles set role='none' where role is null;
 
 create table if not exists public.teacher_student_links(
  id uuid primary key default gen_random_uuid(),
