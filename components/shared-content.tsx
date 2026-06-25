@@ -3,15 +3,20 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookCopy, ChevronRight, Layers3, Sparkles } from "lucide-react";
-import { copySharedCards, copySharedMaterial, loadSharedCards, loadSharedMaterial } from "@/lib/recaloop-data";
+import { copySharedCards, copySharedCardsForStudent, copySharedMaterial, copySharedMaterialForStudent, loadSharedCards, loadSharedMaterial } from "@/lib/recaloop-data";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/client";
 import type { MaterialNode, SharedCards, SharedMaterial } from "@/lib/types";
 
 export function SharedContent({ type, token }: { type: "material" | "cards"; token: string }) {
   const [data, setData] = useState<SharedMaterial | SharedCards | null | undefined>(undefined);
   const [message, setMessage] = useState("");
+  const [viewer, setViewer] = useState<{ studentId: string; name: string } | null>(null);
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem("recaloop-viewer");
+      if (raw) setViewer(JSON.parse(raw));
+    } catch {}
     (type === "material" ? loadSharedMaterial(token) : loadSharedCards(token))
       .then(setData)
       .catch((error) => setMessage(error.message));
@@ -26,7 +31,10 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
       }
     }
     try {
-      if (type === "material") await copySharedMaterial(token);
+      if (type === "material") {
+        if (viewer) await copySharedMaterialForStudent(token, viewer.studentId);
+        else await copySharedMaterial(token);
+      } else if (viewer) await copySharedCardsForStudent(token, viewer.studentId);
       else await copySharedCards(token);
       location.href = "/dashboard";
     } catch (error) {
@@ -41,13 +49,15 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
   const title = source.title;
   const approved = source.visibility === "approved";
   return <Frame>
+    {viewer && <button className="viewer-banner" onClick={() => { localStorage.removeItem("recaloop-viewer"); location.href = "/dashboard"; }}><b>{viewer.name}さんの画面を表示中</b><span>戻る</span></button>}
+    <Link href="/library" className="back-link">← 公開ライブラリへ戻る</Link>
     <div className="flex flex-wrap justify-between gap-4 items-end">
       <div>
         <span className="tag">{approved ? "公開ライブラリ" : "個別配布"}</span>
         <h1 className="text-3xl font-black mt-3">{title}</h1>
         <p className="text-sm text-[#718398] mt-2">{approved ? "運営が承認した公開コンテンツです" : `${type === "material" ? "教材デッキ" : "暗記カード"}の配布リンクです`}</p>
       </div>
-      <button onClick={copy} className="primary-button"><BookCopy size={17} />自分のデッキにコピー</button>
+      <button onClick={copy} className="primary-button"><BookCopy size={17} />{viewer ? `${viewer.name}さんへコピー` : "自分のデッキにコピー"}</button>
     </div>
     <p className="notice mt-4">構造とカード内容だけをコピーします。作成者の評価履歴・チェック・復習状態は含まれません。</p>
     {message && <p className="notice mt-4">{message}</p>}
