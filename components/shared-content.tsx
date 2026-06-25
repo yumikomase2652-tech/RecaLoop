@@ -10,6 +10,7 @@ import type { MaterialNode, SharedCards, SharedMaterial } from "@/lib/types";
 export function SharedContent({ type, token }: { type: "material" | "cards"; token: string }) {
   const [data, setData] = useState<SharedMaterial | SharedCards | null | undefined>(undefined);
   const [message, setMessage] = useState("");
+  const [copying, setCopying] = useState(false);
   const [viewer, setViewer] = useState<{ studentId: string; name: string } | null>(null);
 
   useEffect(() => {
@@ -25,6 +26,8 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
   const copy = async () => {
     const confirmMessage = viewer ? `このデッキを ${viewer.name} さんの学習デッキにコピーしますか？` : "このデッキを自分の学習デッキにコピーしますか？";
     if (!confirm(confirmMessage)) return;
+    setCopying(true);
+    setMessage("");
     if (hasSupabaseEnv) {
       const { data: { user } } = await createClient().auth.getUser();
       if (!user) {
@@ -39,9 +42,11 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
       } else if (viewer) await copySharedCardsForStudent(token, viewer.studentId);
       else await copySharedCards(token);
       setMessage(viewer ? `${viewer.name}さんの学習デッキにコピーしました。` : "自分の学習デッキにコピーしました。");
-      setTimeout(() => { location.href = "/dashboard"; }, 600);
+      setTimeout(() => { location.href = "/dashboard?view=decks"; }, 500);
     } catch (error) {
       setMessage((error as Error).message);
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -62,7 +67,7 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
         {source.edition_label && <p className="text-xs text-[#718398] mt-2">版・年度: {source.edition_label}</p>}
         {source.description && <p className="text-sm text-[#263b4a] mt-3 max-w-2xl">{source.description}</p>}
       </div>
-      <button onClick={copy} className="primary-button"><BookCopy size={17} />{viewer ? `${viewer.name}さんへコピー` : "自分のデッキにコピー"}</button>
+      <button disabled={copying} onClick={copy} className="primary-button"><BookCopy size={17} />{copying ? "コピー中" : viewer ? `${viewer.name}さんへコピー` : "自分のデッキにコピー"}</button>
     </div>
     <p className="notice mt-4">構造とカード内容だけをコピーします。作成者の評価履歴・チェック・復習状態は含まれません。</p>
     {message && <p className="notice mt-4">{message}</p>}

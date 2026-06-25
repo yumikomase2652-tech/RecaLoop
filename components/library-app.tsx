@@ -13,6 +13,7 @@ export function LibraryApp() {
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [copying, setCopying] = useState("");
   const [message, setMessage] = useState("");
   const [viewer, setViewer] = useState<{ studentId: string; name: string } | null>(null);
 
@@ -47,6 +48,8 @@ export function LibraryApp() {
   const copy = async (item: LibraryItem) => {
     const message = viewer ? `このデッキを ${viewer.name} さんの学習デッキにコピーしますか？` : "このデッキを自分の学習デッキにコピーしますか？";
     if (!confirm(message)) return;
+    setCopying(item.id);
+    setMessage("");
     if (hasSupabaseEnv) {
       const { data: { user } } = await createClient().auth.getUser();
       if (!user) {
@@ -54,13 +57,19 @@ export function LibraryApp() {
         return;
       }
     }
-    if (item.content_type === "material") {
-      if (viewer) await copySharedMaterialForStudent(item.share_token, viewer.studentId);
-      else await copySharedMaterial(item.share_token);
-    } else if (viewer) await copySharedCardsForStudent(item.share_token, viewer.studentId);
-    else await copySharedCards(item.share_token);
-    setMessage(viewer ? `${viewer.name}さんの学習デッキにコピーしました。` : "自分の学習デッキにコピーしました。");
-    setTimeout(() => { location.href = "/dashboard"; }, 600);
+    try {
+      if (item.content_type === "material") {
+        if (viewer) await copySharedMaterialForStudent(item.share_token, viewer.studentId);
+        else await copySharedMaterial(item.share_token);
+      } else if (viewer) await copySharedCardsForStudent(item.share_token, viewer.studentId);
+      else await copySharedCards(item.share_token);
+      setMessage(viewer ? `${viewer.name}さんの学習デッキにコピーしました。` : "自分の学習デッキにコピーしました。");
+      setTimeout(() => { location.href = "/dashboard?view=decks"; }, 500);
+    } catch (error) {
+      setMessage((error as Error).message);
+    } finally {
+      setCopying("");
+    }
   };
 
   return <><AppRouteNav active="library" /><main className="app-page min-h-screen p-4 pb-28 md:p-10">
@@ -98,7 +107,7 @@ export function LibraryApp() {
           </Link>
           <div className="library-card-side">
             {item.content_type === "material" ? <BookOpen size={17} /> : <Layers3 size={17} />}
-            <button onClick={() => copy(item)} className="primary-button"><BookCopy size={14} />コピー</button>
+            <button disabled={copying===item.id} onClick={() => copy(item)} className="primary-button"><BookCopy size={14} />{copying===item.id?"コピー中":"コピー"}</button>
           </div>
         </article>)}
       </div>
