@@ -23,6 +23,8 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
   }, [token, type]);
 
   const copy = async () => {
+    const confirmMessage = viewer ? `このデッキを ${viewer.name} さんの学習デッキにコピーしますか？` : "このデッキを自分の学習デッキにコピーしますか？";
+    if (!confirm(confirmMessage)) return;
     if (hasSupabaseEnv) {
       const { data: { user } } = await createClient().auth.getUser();
       if (!user) {
@@ -36,7 +38,8 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
         else await copySharedMaterial(token);
       } else if (viewer) await copySharedCardsForStudent(token, viewer.studentId);
       else await copySharedCards(token);
-      location.href = "/dashboard";
+      setMessage(viewer ? `${viewer.name}さんの学習デッキにコピーしました。` : "自分の学習デッキにコピーしました。");
+      setTimeout(() => { location.href = "/dashboard"; }, 600);
     } catch (error) {
       setMessage((error as Error).message);
     }

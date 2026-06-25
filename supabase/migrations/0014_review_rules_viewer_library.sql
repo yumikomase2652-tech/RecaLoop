@@ -1,9 +1,11 @@
 alter table public.material_decks add column if not exists max_reviews int;
 alter table public.material_decks add column if not exists review_intervals int[] not null default array[1,3,7,14,30,60];
 alter table public.material_decks add column if not exists reset_again_to_first boolean not null default false;
+alter table public.material_decks add column if not exists deleted_at timestamptz;
 alter table public.word_lists add column if not exists max_reviews int;
 alter table public.word_lists add column if not exists review_intervals int[] not null default array[1,3,7,14,30,60];
 alter table public.word_lists add column if not exists reset_again_to_first boolean not null default false;
+alter table public.word_lists add column if not exists deleted_at timestamptz;
 alter table public.material_item_states add column if not exists review_step int not null default 0;
 alter table public.material_item_states add column if not exists is_completed boolean not null default false;
 alter table public.word_card_states add column if not exists review_step int not null default 0;
@@ -59,7 +61,7 @@ create function public.review_target(p_type text,p_id uuid,p_rating rating,p_unk
 declare prior_count int:=0;prior_step int:=0;attempt_id uuid:=gen_random_uuid();v_deck_id uuid;v_source_id uuid;v_deck_title text;v_title_id uuid;all_count int;done_count int;exp_gained int:=0;new_titles jsonb:='[]'::jsonb;inserted_title uuid;target_kind text;rule jsonb;days int;next_count int;next_step int;completed boolean;max_reviews int;intervals int[];reset_again boolean;begin
  target_kind:=case when p_type='material'then'material_item'else'word_card'end;
  if p_type='material'then
-  select n.deck_id,coalesce(s.review_count,0),coalesce(s.review_step,0),d.max_reviews,d.review_intervals,d.reset_again_to_first into v_deck_id,prior_count,prior_step,max_reviews,intervals,reset_again from material_nodes n join material_decks d on d.id=n.deck_id left join material_item_states s on s.material_node_id=n.id and s.user_id=auth.uid()where n.id=p_id and n.node_type='item'and d.user_id=auth.uid();if v_deck_id is null then raise exception'not allowed';end if;
+  select n.deck_id,coalesce(s.review_count,0),coalesce(s.review_step,0),d.max_reviews,d.review_intervals,d.reset_again_to_first into v_deck_id,prior_count,prior_step,max_reviews,intervals,reset_again from material_nodes n join material_decks d on d.id=n.deck_id left join material_item_states s on s.material_node_id=n.id and s.user_id=auth.uid()where n.id=p_id and n.node_type='item'and d.user_id=auth.uid()and d.deleted_at is null;if v_deck_id is null then raise exception'not allowed';end if;
   if p_rating is null then insert into material_item_states(user_id,material_node_id,unknown_flag)values(auth.uid(),p_id,p_unknown)on conflict(user_id,material_node_id)do update set unknown_flag=p_unknown,updated_at=now();insert into material_attempts(id,user_id,material_node_id,rating,unknown_flag,action,actor_id,actor_role)values(attempt_id,auth.uid(),p_id,null,p_unknown,'check',auth.uid(),'student');
   else rule:=public.review_rule_result(p_rating,prior_step,prior_count,max_reviews,intervals,reset_again);days:=(rule->>'days')::int;next_count:=(rule->>'count')::int;next_step:=(rule->>'step')::int;completed:=(rule->>'completed')::boolean;
    insert into material_item_states(user_id,material_node_id,last_rating,unknown_flag,review_count,review_step,is_completed,due_at,next_review_date)values(auth.uid(),p_id,p_rating,p_unknown,next_count,next_step,completed,case when completed then null else now()+make_interval(days=>days)end,case when completed then null else current_date+days end)on conflict(user_id,material_node_id)do update set last_rating=p_rating,unknown_flag=p_unknown,review_count=next_count,review_step=next_step,is_completed=completed,due_at=case when completed then null else now()+make_interval(days=>days)end,next_review_date=case when completed then null else current_date+days end,updated_at=now();
@@ -68,7 +70,7 @@ declare prior_count int:=0;prior_step int:=0;attempt_id uuid:=gen_random_uuid();
    if all_count>0 and done_count=all_count and grant_exp(50,'deck_complete','material:'||v_deck_id::text)then exp_gained:=exp_gained+50;select coalesce(d.source_content_id,d.id),coalesce(src.published_snapshot->>'title',d.title)into v_source_id,v_deck_title from material_decks d left join material_decks src on src.id=d.source_content_id where d.id=v_deck_id;insert into titles(title_key,display_name,title_type,condition_json)values('deck_completion:material:'||v_source_id::text,v_deck_title,'deck_completion',jsonb_build_object('source_type','material','source_id',v_source_id))on conflict(title_key)do update set display_name=excluded.display_name,condition_json=excluded.condition_json returning id into v_title_id;inserted_title:=null;insert into user_titles(user_id,title_id,source_type,source_id)values(auth.uid(),v_title_id,'material',v_source_id)on conflict do nothing returning id into inserted_title;if inserted_title is not null then update profiles set equipped_title_id=v_title_id where id=auth.uid();new_titles:=new_titles||jsonb_build_array(v_deck_title);end if;end if;
   end if;
  else
-  select c.list_id,coalesce(s.review_count,0),coalesce(s.review_step,0),l.max_reviews,l.review_intervals,l.reset_again_to_first into v_deck_id,prior_count,prior_step,max_reviews,intervals,reset_again from word_cards c join word_lists l on l.id=c.list_id left join word_card_states s on s.word_card_id=c.id and s.user_id=auth.uid()where c.id=p_id and l.user_id=auth.uid();if v_deck_id is null then raise exception'not allowed';end if;
+  select c.list_id,coalesce(s.review_count,0),coalesce(s.review_step,0),l.max_reviews,l.review_intervals,l.reset_again_to_first into v_deck_id,prior_count,prior_step,max_reviews,intervals,reset_again from word_cards c join word_lists l on l.id=c.list_id left join word_card_states s on s.word_card_id=c.id and s.user_id=auth.uid()where c.id=p_id and l.user_id=auth.uid()and l.deleted_at is null;if v_deck_id is null then raise exception'not allowed';end if;
   if p_rating is null then insert into word_card_states(user_id,word_card_id,unknown_flag)values(auth.uid(),p_id,p_unknown)on conflict(user_id,word_card_id)do update set unknown_flag=p_unknown,updated_at=now();insert into word_attempts(id,user_id,word_card_id,rating,unknown_flag,action,actor_id,actor_role)values(attempt_id,auth.uid(),p_id,null,p_unknown,'check',auth.uid(),'student');
   else rule:=public.review_rule_result(p_rating,prior_step,prior_count,max_reviews,intervals,reset_again);days:=(rule->>'days')::int;next_count:=(rule->>'count')::int;next_step:=(rule->>'step')::int;completed:=(rule->>'completed')::boolean;
    insert into word_card_states(user_id,word_card_id,last_rating,unknown_flag,review_count,review_step,is_completed,due_at,next_review_date)values(auth.uid(),p_id,p_rating,p_unknown,next_count,next_step,completed,case when completed then null else now()+make_interval(days=>days)end,case when completed then null else current_date+days end)on conflict(user_id,word_card_id)do update set last_rating=p_rating,unknown_flag=p_unknown,review_count=next_count,review_step=next_step,is_completed=completed,due_at=case when completed then null else now()+make_interval(days=>days)end,next_review_date=case when completed then null else current_date+days end,updated_at=now();
@@ -93,12 +95,12 @@ declare days int;target_kind text;v_deck_id uuid;prior_count int:=0;prior_step i
  if not exists(select 1 from teacher_student_links where teacher_id=auth.uid()and student_id=p_student_id and status='active')then raise exception'not allowed';end if;
  target_kind:=case when p_type='material'then'material_item'else'word_card'end;
  if p_type='material'then
-  select n.deck_id,coalesce(s.review_count,0),coalesce(s.review_step,0),d.max_reviews,d.review_intervals,d.reset_again_to_first into v_deck_id,prior_count,prior_step,max_reviews,intervals,reset_again from material_nodes n join material_decks d on d.id=n.deck_id left join material_item_states s on s.material_node_id=n.id and s.user_id=p_student_id where n.id=p_id and n.node_type='item'and d.user_id=p_student_id;
+  select n.deck_id,coalesce(s.review_count,0),coalesce(s.review_step,0),d.max_reviews,d.review_intervals,d.reset_again_to_first into v_deck_id,prior_count,prior_step,max_reviews,intervals,reset_again from material_nodes n join material_decks d on d.id=n.deck_id left join material_item_states s on s.material_node_id=n.id and s.user_id=p_student_id where n.id=p_id and n.node_type='item'and d.user_id=p_student_id and d.deleted_at is null;
   if v_deck_id is null then raise exception'not allowed';end if;
   if p_rating is null then insert into material_item_states(user_id,material_node_id,unknown_flag)values(p_student_id,p_id,p_unknown)on conflict(user_id,material_node_id)do update set unknown_flag=p_unknown,updated_at=now();insert into material_attempts(user_id,material_node_id,rating,unknown_flag,action,actor_id,actor_role)values(p_student_id,p_id,null,p_unknown,'check',auth.uid(),'teacher');
   else rule:=public.review_rule_result(p_rating,prior_step,prior_count,max_reviews,intervals,reset_again);days:=(rule->>'days')::int;next_count:=(rule->>'count')::int;next_step:=(rule->>'step')::int;completed:=(rule->>'completed')::boolean;insert into material_item_states(user_id,material_node_id,last_rating,unknown_flag,review_count,review_step,is_completed,due_at,next_review_date)values(p_student_id,p_id,p_rating,p_unknown,next_count,next_step,completed,case when completed then null else now()+make_interval(days=>days)end,case when completed then null else current_date+days end)on conflict(user_id,material_node_id)do update set last_rating=p_rating,unknown_flag=p_unknown,review_count=next_count,review_step=next_step,is_completed=completed,due_at=case when completed then null else now()+make_interval(days=>days)end,next_review_date=case when completed then null else current_date+days end,updated_at=now();insert into material_attempts(user_id,material_node_id,rating,unknown_flag,action,actor_id,actor_role)values(p_student_id,p_id,p_rating,p_unknown,'review',auth.uid(),'teacher');end if;
  else
-  select c.list_id,coalesce(s.review_count,0),coalesce(s.review_step,0),l.max_reviews,l.review_intervals,l.reset_again_to_first into v_deck_id,prior_count,prior_step,max_reviews,intervals,reset_again from word_cards c join word_lists l on l.id=c.list_id left join word_card_states s on s.word_card_id=c.id and s.user_id=p_student_id where c.id=p_id and l.user_id=p_student_id;
+  select c.list_id,coalesce(s.review_count,0),coalesce(s.review_step,0),l.max_reviews,l.review_intervals,l.reset_again_to_first into v_deck_id,prior_count,prior_step,max_reviews,intervals,reset_again from word_cards c join word_lists l on l.id=c.list_id left join word_card_states s on s.word_card_id=c.id and s.user_id=p_student_id where c.id=p_id and l.user_id=p_student_id and l.deleted_at is null;
   if v_deck_id is null then raise exception'not allowed';end if;
   if p_rating is null then insert into word_card_states(user_id,word_card_id,unknown_flag)values(p_student_id,p_id,p_unknown)on conflict(user_id,word_card_id)do update set unknown_flag=p_unknown,updated_at=now();insert into word_attempts(user_id,word_card_id,rating,unknown_flag,action,actor_id,actor_role)values(p_student_id,p_id,null,p_unknown,'check',auth.uid(),'teacher');
   else rule:=public.review_rule_result(p_rating,prior_step,prior_count,max_reviews,intervals,reset_again);days:=(rule->>'days')::int;next_count:=(rule->>'count')::int;next_step:=(rule->>'step')::int;completed:=(rule->>'completed')::boolean;insert into word_card_states(user_id,word_card_id,last_rating,unknown_flag,review_count,review_step,is_completed,due_at,next_review_date)values(p_student_id,p_id,p_rating,p_unknown,next_count,next_step,completed,case when completed then null else now()+make_interval(days=>days)end,case when completed then null else current_date+days end)on conflict(user_id,word_card_id)do update set last_rating=p_rating,unknown_flag=p_unknown,review_count=next_count,review_step=next_step,is_completed=completed,due_at=case when completed then null else now()+make_interval(days=>days)end,next_review_date=case when completed then null else current_date+days end,updated_at=now();insert into word_attempts(user_id,word_card_id,rating,unknown_flag,action,actor_id,actor_role)values(p_student_id,p_id,p_rating,p_unknown,'review',auth.uid(),'teacher');end if;
@@ -138,3 +140,26 @@ declare source_id uuid;new_list uuid;snap jsonb;version int;begin
 end$$;
 grant execute on function public.copy_shared_material_for_student(text,uuid) to authenticated;
 grant execute on function public.copy_shared_cards_for_student(text,uuid) to authenticated;
+
+create or replace function public.delete_owned_content(p_type text,p_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path=public
+as $$
+begin
+  if auth.uid() is null then raise exception 'login required'; end if;
+  if p_type='material' then
+    update public.material_decks set deleted_at=coalesce(deleted_at,now()),updated_at=now()
+    where id=p_id and user_id=auth.uid();
+    if not found then raise exception 'not allowed'; end if;
+  elsif p_type='word' or p_type='cards' then
+    update public.word_lists set deleted_at=coalesce(deleted_at,now()),updated_at=now()
+    where id=p_id and user_id=auth.uid();
+    if not found then raise exception 'not allowed'; end if;
+  else
+    raise exception 'invalid content type';
+  end if;
+end
+$$;
+grant execute on function public.delete_owned_content(text,uuid) to authenticated;

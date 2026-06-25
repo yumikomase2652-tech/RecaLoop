@@ -45,6 +45,8 @@ export function LibraryApp() {
   };
 
   const copy = async (item: LibraryItem) => {
+    const message = viewer ? `このデッキを ${viewer.name} さんの学習デッキにコピーしますか？` : "このデッキを自分の学習デッキにコピーしますか？";
+    if (!confirm(message)) return;
     if (hasSupabaseEnv) {
       const { data: { user } } = await createClient().auth.getUser();
       if (!user) {
@@ -57,7 +59,8 @@ export function LibraryApp() {
       else await copySharedMaterial(item.share_token);
     } else if (viewer) await copySharedCardsForStudent(item.share_token, viewer.studentId);
     else await copySharedCards(item.share_token);
-    location.href = "/dashboard";
+    setMessage(viewer ? `${viewer.name}さんの学習デッキにコピーしました。` : "自分の学習デッキにコピーしました。");
+    setTimeout(() => { location.href = "/dashboard"; }, 600);
   };
 
   return <><AppRouteNav active="library" /><main className="app-page min-h-screen p-4 pb-28 md:p-10">
