@@ -91,7 +91,8 @@ export function LibraryApp() {
             <span className="tag neutral">{item.content_type === "material" ? "問題集" : "暗記カード"}</span>
             <div className="min-w-0">
               <h2>{item.title}</h2>
-              <p>{item.item_count}{item.content_type === "material" ? "問" : "枚"} ・ {item.copy_count}コピー ・ {new Date(item.updated_at).toLocaleDateString("ja-JP")}</p>
+              <p>{item.item_count}{item.content_type === "material" ? "問" : "枚"} ・ {item.copy_count}コピー ・ {new Date(item.updated_at).toLocaleDateString("ja-JP")}{item.edition_label ? ` ・ ${item.edition_label}` : ""}</p>
+              {item.description && <p className="library-description">{item.description}</p>}
               {(item.clear_titles?.length || 0) > 0 && <div className="clear-title-panel compact">{item.clear_titles?.slice(0,1).map((title) => <div key={title.name}><b><Trophy size={14} />デッキ完走称号</b><span>{title.name}</span><strong>{title.count}人</strong></div>)}</div>}
             </div>
           </Link>

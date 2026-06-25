@@ -46,14 +46,14 @@ export function AdminSubmissions() {
           {items.map((item) => <button key={`${item.content_type}-${item.id}`} onClick={() => open(item)} className={`surface p-4 text-left w-full ${selected?.id === item.id ? "ring-2 ring-[#6da5c0]" : ""}`}>
             <div className="flex gap-2"><span className="tag neutral">{item.content_type === "material" ? "教材デッキ" : "暗記カード"}</span><span className="tag">{item.submission_kind === "update" ? "公開版更新" : "新規投稿"}</span></div>
             <b className="block mt-3">{item.title}</b>
-            <p className="text-xs text-[#71818d] mt-1">{item.creator_name} ・ {item.item_count}件</p>
+            <p className="text-xs text-[#71818d] mt-1">{item.item_count}件{item.edition_label ? ` ・ ${item.edition_label}` : ""}</p>
             <p className="text-[10px] text-[#71818d] mt-1">申請 {new Date(item.submitted_at).toLocaleString("ja-JP")}</p>
           </button>)}
           {!items.length && <div className="surface p-6 text-sm">申請はありません。</div>}
         </aside>
         <section>{selected && detail ? <div className="surface p-5 md:p-6">
           <div className="flex flex-wrap justify-between gap-3">
-            <div><span className="tag">{selected.submission_kind === "update" ? "公開版の更新申請" : "新規掲載申請"}</span><h2 className="text-2xl font-black mt-3">{selected.title}</h2><p className="text-xs text-[#71818d] mt-2">作成者 {selected.creator_name} ・ {selected.item_count}件</p></div>
+            <div><span className="tag">{selected.submission_kind === "update" ? "公開版の更新申請" : "新規掲載申請"}</span><h2 className="text-2xl font-black mt-3">{selected.title}</h2><p className="text-xs text-[#71818d] mt-2">{selected.item_count}件{selected.edition_label ? ` ・ ${selected.edition_label}` : ""}</p>{selected.description&&<p className="text-sm text-[#263b4a] mt-3">{selected.description}</p>}</div>
             <div className="flex gap-2"><button onClick={() => moderate(false)} className="secondary-button text-[#b34f4f]"><XCircle size={16} />却下</button><button onClick={() => moderate(true)} className="primary-button"><CheckCircle2 size={16} />承認</button></div>
           </div>
           <p className="notice mt-5 flex gap-2"><AlertTriangle size={16} className="shrink-0" />黄色の項目は180文字を超えています。教材本文・問題文・解答の転載でないか確認してください。</p>

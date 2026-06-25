@@ -59,6 +59,8 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
         <span className="tag">{approved ? "公開ライブラリ" : "個別配布"}</span>
         <h1 className="text-3xl font-black mt-3">{title}</h1>
         <p className="text-sm text-[#718398] mt-2">{approved ? "運営が承認した公開コンテンツです" : `${type === "material" ? "教材デッキ" : "暗記カード"}の配布リンクです`}</p>
+        {source.edition_label && <p className="text-xs text-[#718398] mt-2">版・年度: {source.edition_label}</p>}
+        {source.description && <p className="text-sm text-[#263b4a] mt-3 max-w-2xl">{source.description}</p>}
       </div>
       <button onClick={copy} className="primary-button"><BookCopy size={17} />{viewer ? `${viewer.name}さんへコピー` : "自分のデッキにコピー"}</button>
     </div>
