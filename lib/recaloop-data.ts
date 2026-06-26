@@ -3,17 +3,62 @@ import { demoData } from "./demo-data";
 import type { AppData,Assignment,AssignmentItem,ExpTransaction,GradeLevel,LibraryItem,MaterialAttempt,MaterialDeck,MaterialNode,Profile,RankingItem,Rating,ReviewResult,ReviewRpcArgs,ReviewState,ReviewStudentRpcArgs,SharedCards,SharedMaterial,StudyPlan,StudyPlanItem,StudySession,Submission,TargetType,TeacherStudentLink,UserRole,WordAttempt,WordCard,WordList } from "./types";
 const fail=(e:{message:string}|null)=>{if(e)throw new Error(e.message)},db=()=>createClient();
 const emptyState:ReviewState={last_rating:null,unknown_flag:false,review_count:0,review_step:0,is_completed:false,due_at:null,next_review_date:null};
+const todayString=()=>new Date().toISOString().slice(0,10);
 function withTimeout<T>(promise:Promise<T>,ms=15000,label="処理"){return new Promise<T>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error(`${label}がタイムアウトしました。通信状況を確認して再読み込みしてください。`)),ms);promise.then(value=>{clearTimeout(timer);resolve(value)}).catch(error=>{clearTimeout(timer);reject(error)})})}
 async function allRows<T>(table:string,select="*"){const out:T[]=[];for(let from=0;;from+=1000){const{data,error}=await db().from(table).select(select).range(from,from+999);fail(error);out.push(...(data as T[]||[]));if(!data||data.length<1000)break;if(out.length>=10000)break}return out}
 async function rowsForIds<T>(table:string,column:string,ids:string[],select="*"){const out:T[]=[];const unique=[...new Set(ids.filter(Boolean))];for(let i=0;i<unique.length;i+=80){const chunk=unique.slice(i,i+80);for(let from=0;;from+=1000){const{data,error}=await db().from(table).select(select).in(column,chunk).range(from,from+999);fail(error);out.push(...(data as T[]||[]));if(!data||data.length<1000)break}}return out}
+async function countRows(table:string,column:string,value:string){let q=db().from(table).select("id",{count:"exact",head:true}).eq(column,value);if(table==="material_nodes")q=q.eq("node_type","item");const{count,error}=await q;fail(error);return count||0}
+async function dueStateRows<T>(table:string){const out:T[]=[];for(let from=0;;from+=1000){const{data,error}=await db().from(table).select("*").lte("next_review_date",todayString()).or("is_completed.is.null,is_completed.eq.false").range(from,from+999);fail(error);out.push(...(data as T[]||[]));if(!data||data.length<1000)break;if(out.length>=3000)break}return out}
 async function loadOwnProfile(){const s=db(),{data,error}=await s.from("profiles").select("*").maybeSingle();fail(error);if(data)return data as Profile;const{data:{user},error:userError}=await s.auth.getUser();fail(userError);if(!user)throw new Error("ログインが必要です");const{data:created,error:createError}=await s.from("profiles").insert({id:user.id,display_name:user.email?.split("@")[0]||""}).select("*").single();fail(createError);return created as Profile}
 async function loadTeacherLinks(){const links=await allRows<TeacherStudentLink>("teacher_student_links");if(!links.length)return links;try{const{data,error}=await db().rpc("linked_profiles");fail(error);const profiles=new Map((data as Profile[]||[]).map(profile=>[profile.id,profile]));return links.map(link=>({...link,teacher:profiles.get(link.teacher_id)||link.teacher||null,student:link.student_id?profiles.get(link.student_id)||link.student||null:null}))}catch{return links.map(link=>({...link,teacher:link.teacher||null,student:link.student||null}))}}
-export async function loadAppData():Promise<AppData>{if(!hasSupabaseEnv)return structuredClone(demoData);return withTimeout((async()=>{const s=db();const advanced=await s.rpc("advance_grade_if_needed");if(advanced.error)console.warn("advance_grade_if_needed failed",advanced.error.message);const[qP,qT,qUT,qD,qL,qTL,qA,qAI,qSP,qSPI,qSS,qET,qMA,qWA]=await Promise.all([loadOwnProfile(),s.from("titles").select("*").order("created_at"),s.from("user_titles").select("*,title:titles(*)").order("earned_at",{ascending:false}),allRows<MaterialDeck>("material_decks"),allRows<WordList>("word_lists"),loadTeacherLinks(),allRows<Assignment>("assignments","*,student:profiles!assignments_student_id_fkey(*),teacher:profiles!assignments_teacher_id_fkey(*)"),allRows<AssignmentItem>("assignment_items"),allRows<StudyPlan>("study_plans"),allRows<StudyPlanItem>("study_plan_items"),allRows<StudySession>("study_sessions"),allRows<ExpTransaction>("exp_transactions"),allRows<MaterialAttempt>("material_attempts"),allRows<WordAttempt>("word_attempts")]);[qT,qUT].forEach(q=>fail(q.error));const deckIds=(qD||[]).map(d=>d.id),listIds=(qL||[]).map(l=>l.id),qN=await rowsForIds<MaterialNode>("material_nodes","deck_id",deckIds),qC=await rowsForIds<WordCard>("word_cards","list_id",listIds),nodeIds=qN.map(n=>n.id),cardIds=qC.map(c=>c.id),[qMS,qWS]=await Promise.all([rowsForIds<ReviewState&{material_node_id:string}>("material_item_states","material_node_id",nodeIds),rowsForIds<ReviewState&{word_card_id:string}>("word_card_states","word_card_id",cardIds)]);const ms=new Map((qMS||[]).map(x=>[x.material_node_id,x])),ws=new Map((qWS||[]).map(x=>[x.word_card_id,x]));return{profile:qP,titles:qT.data||[],userTitles:qUT.data||[],materialDecks:qD||[],materialNodes:(qN||[]).map(n=>({...n,state:n.node_type==="item"?ms.get(n.id)||emptyState:undefined})),materialAttempts:qMA||[],wordLists:qL||[],wordCards:(qC||[]).map(c=>({...c,state:ws.get(c.id)||emptyState})),wordAttempts:qWA||[],studySessions:qSS||[],expTransactions:qET||[],teacherLinks:qTL||[],assignments:qA||[],assignmentItems:qAI||[],studyPlans:qSP||[],studyPlanItems:qSPI||[]}})(),15000,"読み込み")}
+export async function loadAppData():Promise<AppData>{
+	if(!hasSupabaseEnv)return structuredClone(demoData);
+	return withTimeout((async()=>{
+		const s=db(),advanced=await s.rpc("advance_grade_if_needed");
+		if(advanced.error)console.warn("advance_grade_if_needed failed",advanced.error.message);
+		const[qP,qT,qUT,qD,qL,qTL,qA,qAI,qSP,qSPI,qSS,qET,qMA,qWA]=await Promise.all([
+			loadOwnProfile(),
+			s.from("titles").select("*").order("created_at"),
+			s.from("user_titles").select("*,title:titles(*)").order("earned_at",{ascending:false}),
+			allRows<MaterialDeck>("material_decks"),
+			allRows<WordList>("word_lists"),
+			loadTeacherLinks(),
+			allRows<Assignment>("assignments","*,student:profiles!assignments_student_id_fkey(*),teacher:profiles!assignments_teacher_id_fkey(*)"),
+			allRows<AssignmentItem>("assignment_items"),
+			allRows<StudyPlan>("study_plans"),
+			allRows<StudyPlanItem>("study_plan_items"),
+			allRows<StudySession>("study_sessions"),
+			allRows<ExpTransaction>("exp_transactions"),
+			allRows<MaterialAttempt>("material_attempts"),
+			allRows<WordAttempt>("word_attempts")
+		]);
+		[qT,qUT].forEach(q=>fail(q.error));
+		const now=todayString(),todayPlanItems=(qSPI||[]).filter(item=>item.scheduled_date===now&&item.status==="planned"),[deckCounts,listCounts,dueMaterialStates,dueWordStates]=await Promise.all([
+			Promise.all((qD||[]).map(async d=>[d.id,await countRows("material_nodes","deck_id",d.id)]as const)),
+			Promise.all((qL||[]).map(async l=>[l.id,await countRows("word_cards","list_id",l.id)]as const)),
+			dueStateRows<ReviewState&{material_node_id:string}>("material_item_states"),
+			dueStateRows<ReviewState&{word_card_id:string}>("word_card_states")
+		]),dm=new Map(deckCounts),lm=new Map(listCounts),materialIds=[
+			...dueMaterialStates.map(s=>s.material_node_id),
+			...(qAI||[]).filter(item=>item.target_type==="material_item").map(item=>item.target_id),
+			...todayPlanItems.filter(item=>item.target_type==="material_item").map(item=>item.target_id)
+		],wordIds=[
+			...dueWordStates.map(s=>s.word_card_id),
+			...(qAI||[]).filter(item=>item.target_type==="word_card").map(item=>item.target_id),
+			...todayPlanItems.filter(item=>item.target_type==="word_card").map(item=>item.target_id)
+		],targetNodes=await rowsForIds<MaterialNode>("material_nodes","id",materialIds),targetCards=await rowsForIds<WordCard>("word_cards","id",wordIds),[qMS,qWS]=await Promise.all([
+			rowsForIds<ReviewState&{material_node_id:string}>("material_item_states","material_node_id",targetNodes.filter(n=>n.node_type==="item").map(n=>n.id)),
+			rowsForIds<ReviewState&{word_card_id:string}>("word_card_states","word_card_id",targetCards.map(c=>c.id))
+		]),ms=new Map(qMS.map(x=>[x.material_node_id,x])),ws=new Map(qWS.map(x=>[x.word_card_id,x]));
+		return{profile:qP,titles:qT.data||[],userTitles:qUT.data||[],materialDecks:(qD||[]).map(d=>({...d,item_count:dm.get(d.id)||0})),materialNodes:targetNodes.map(n=>({...n,state:n.node_type==="item"?ms.get(n.id)||emptyState:undefined})),materialAttempts:qMA||[],wordLists:(qL||[]).map(l=>({...l,item_count:lm.get(l.id)||0})),wordCards:targetCards.map(c=>({...c,state:ws.get(c.id)||emptyState})),wordAttempts:qWA||[],studySessions:qSS||[],expTransactions:qET||[],teacherLinks:qTL||[],assignments:qA||[],assignmentItems:qAI||[],studyPlans:qSP||[],studyPlanItems:qSPI||[]}
+	})(),15000,"読み込み")
+}
 async function userId(){const{data:{user}}=await db().auth.getUser();if(!user)throw new Error("ログインが必要です");return user.id}
 export async function createMaterialDeck(input:Pick<MaterialDeck,"title"|"subject"|"description">){if(!hasSupabaseEnv)return{id:crypto.randomUUID(),user_id:"demo-user",created_at:new Date().toISOString(),...input};const{data,error}=await db().from("material_decks").insert({...input,user_id:await userId()}).select().single();fail(error);return data as MaterialDeck}
 export async function updateMaterialDeck(id:string,input:Partial<MaterialDeck>){if(!hasSupabaseEnv)return;const{error}=await db().from("material_decks").update(input).eq("id",id);fail(error)}
 export async function deleteMaterialDeck(id:string){if(!hasSupabaseEnv)return;const{error}=await db().rpc("delete_owned_content",{p_type:"material",p_id:id});fail(error)}
 export async function deleteStudentContent(studentId:string,type:TargetType,id:string){if(!hasSupabaseEnv)return;const{error}=await db().rpc("delete_student_content",{p_student_id:studentId,p_type:type==="material"?"material":"word",p_id:id});fail(error)}
+export async function loadMaterialNodes(deckId:string){if(!hasSupabaseEnv)return structuredClone(demoData.materialNodes.filter(n=>n.deck_id===deckId));const nodes=await rowsForIds<MaterialNode>("material_nodes","deck_id",[deckId]),states=await rowsForIds<ReviewState&{material_node_id:string}>("material_item_states","material_node_id",nodes.filter(n=>n.node_type==="item").map(n=>n.id)),stateMap=new Map(states.map(s=>[s.material_node_id,s]));return nodes.map(n=>({...n,state:n.node_type==="item"?stateMap.get(n.id)||emptyState:undefined}))}
 export async function saveMaterialNode(input:Omit<MaterialNode,"id"|"created_at"|"state">){if(!hasSupabaseEnv)return{id:crypto.randomUUID(),created_at:new Date().toISOString(),...input};const{data,error}=await db().rpc("save_material_node",{p_deck_id:input.deck_id,p_parent_id:input.parent_id,p_node_type:input.node_type,p_title:input.title,p_memo:input.memo,p_order_index:input.order_index});fail(error);return data as MaterialNode}
 export async function updateMaterialNode(id:string,input:Partial<MaterialNode>){if(!hasSupabaseEnv)return;const{error}=await db().from("material_nodes").update(input).eq("id",id);fail(error)}
 export async function deleteMaterialNode(id:string){if(!hasSupabaseEnv)return;const{error}=await db().from("material_nodes").delete().eq("id",id);fail(error)}
@@ -21,6 +66,7 @@ export async function importMaterialNodes(deckId:string,nodes:MaterialNode[]){if
 export async function createWordList(input:Pick<WordList,"title"|"subject"|"description">){if(!hasSupabaseEnv)return{id:crypto.randomUUID(),user_id:"demo-user",created_at:new Date().toISOString(),...input};const{data,error}=await db().from("word_lists").insert({...input,user_id:await userId()}).select().single();fail(error);return data as WordList}
 export async function updateWordList(id:string,input:Partial<WordList>){if(!hasSupabaseEnv)return;const{error}=await db().from("word_lists").update(input).eq("id",id);fail(error)}
 export async function deleteWordList(id:string){if(!hasSupabaseEnv)return;const{error}=await db().rpc("delete_owned_content",{p_type:"word",p_id:id});fail(error)}
+export async function loadWordCards(listId:string){if(!hasSupabaseEnv)return structuredClone(demoData.wordCards.filter(c=>c.list_id===listId));const cards=await rowsForIds<WordCard>("word_cards","list_id",[listId]),states=await rowsForIds<ReviewState&{word_card_id:string}>("word_card_states","word_card_id",cards.map(c=>c.id)),stateMap=new Map(states.map(s=>[s.word_card_id,s]));return cards.map(c=>({...c,state:stateMap.get(c.id)||emptyState}))}
 export async function saveWordCard(input:Omit<WordCard,"id"|"created_at"|"state">){if(!hasSupabaseEnv)return{id:crypto.randomUUID(),created_at:new Date().toISOString(),...input};const{data,error}=await db().rpc("save_word_card",{p_list_id:input.list_id,p_card_id:input.card_id,p_front:input.front,p_back:input.back,p_memo:input.memo,p_order_index:input.order_index});fail(error);return data as WordCard}
 export async function updateWordCard(id:string,input:Partial<WordCard>){if(!hasSupabaseEnv)return;const{error}=await db().from("word_cards").update(input).eq("id",id);fail(error)}
 export async function deleteWordCard(id:string){if(!hasSupabaseEnv)return;const{error}=await db().from("word_cards").delete().eq("id",id);fail(error)}
