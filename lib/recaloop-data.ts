@@ -33,7 +33,7 @@ export async function loadAppData():Promise<AppData>{
 			allRows<WordAttempt>("word_attempts")
 		]);
 		[qT,qUT].forEach(q=>fail(q.error));
-		const now=todayString(),todayPlanItems=(qSPI||[]).filter(item=>item.scheduled_date===now&&item.status==="planned"),[deckCounts,listCounts,dueMaterialStates,dueWordStates]=await Promise.all([
+		const [deckCounts,listCounts,dueMaterialStates,dueWordStates]=await Promise.all([
 			Promise.all((qD||[]).map(async d=>[d.id,await countRows("material_nodes","deck_id",d.id)]as const)),
 			Promise.all((qL||[]).map(async l=>[l.id,await countRows("word_cards","list_id",l.id)]as const)),
 			dueStateRows<ReviewState&{material_node_id:string}>("material_item_states"),
@@ -41,11 +41,11 @@ export async function loadAppData():Promise<AppData>{
 		]),dm=new Map(deckCounts),lm=new Map(listCounts),materialIds=[
 			...dueMaterialStates.map(s=>s.material_node_id),
 			...(qAI||[]).filter(item=>item.target_type==="material_item").map(item=>item.target_id),
-			...todayPlanItems.filter(item=>item.target_type==="material_item").map(item=>item.target_id)
+			...(qSPI||[]).filter(item=>item.target_type==="material_item").map(item=>item.target_id)
 		],wordIds=[
 			...dueWordStates.map(s=>s.word_card_id),
 			...(qAI||[]).filter(item=>item.target_type==="word_card").map(item=>item.target_id),
-			...todayPlanItems.filter(item=>item.target_type==="word_card").map(item=>item.target_id)
+			...(qSPI||[]).filter(item=>item.target_type==="word_card").map(item=>item.target_id)
 		],targetNodes=await rowsForIds<MaterialNode>("material_nodes","id",materialIds),targetCards=await rowsForIds<WordCard>("word_cards","id",wordIds),[qMS,qWS]=await Promise.all([
 			rowsForIds<ReviewState&{material_node_id:string}>("material_item_states","material_node_id",targetNodes.filter(n=>n.node_type==="item").map(n=>n.id)),
 			rowsForIds<ReviewState&{word_card_id:string}>("word_card_states","word_card_id",targetCards.map(c=>c.id))
@@ -59,6 +59,7 @@ export async function updateMaterialDeck(id:string,input:Partial<MaterialDeck>){
 export async function deleteMaterialDeck(id:string){if(!hasSupabaseEnv)return;const{error}=await db().rpc("delete_owned_content",{p_type:"material",p_id:id});fail(error)}
 export async function deleteStudentContent(studentId:string,type:TargetType,id:string){if(!hasSupabaseEnv)return;const{error}=await db().rpc("delete_student_content",{p_student_id:studentId,p_type:type==="material"?"material":"word",p_id:id});fail(error)}
 export async function loadMaterialNodes(deckId:string){if(!hasSupabaseEnv)return structuredClone(demoData.materialNodes.filter(n=>n.deck_id===deckId));const nodes=await rowsForIds<MaterialNode>("material_nodes","deck_id",[deckId]),states=await rowsForIds<ReviewState&{material_node_id:string}>("material_item_states","material_node_id",nodes.filter(n=>n.node_type==="item").map(n=>n.id)),stateMap=new Map(states.map(s=>[s.material_node_id,s]));return nodes.map(n=>({...n,state:n.node_type==="item"?stateMap.get(n.id)||emptyState:undefined}))}
+export async function loadContentForAssignmentItems(items:Pick<AssignmentItem,"target_type"|"target_id">[]){if(!hasSupabaseEnv){const materialIds=new Set(items.filter(i=>i.target_type==="material_item").map(i=>i.target_id)),wordIds=new Set(items.filter(i=>i.target_type==="word_card").map(i=>i.target_id));return{nodes:structuredClone(demoData.materialNodes.filter(n=>materialIds.has(n.id)||demoData.materialNodes.some(item=>materialIds.has(item.id)&&item.deck_id===n.deck_id))),cards:structuredClone(demoData.wordCards.filter(c=>wordIds.has(c.id)||demoData.wordCards.some(card=>wordIds.has(card.id)&&card.list_id===c.list_id)))}}const materialIds=items.filter(i=>i.target_type==="material_item").map(i=>i.target_id),wordIds=items.filter(i=>i.target_type==="word_card").map(i=>i.target_id),[seedNodes,seedCards]=await Promise.all([rowsForIds<MaterialNode>("material_nodes","id",materialIds),rowsForIds<WordCard>("word_cards","id",wordIds)]),deckIds=[...new Set(seedNodes.map(n=>n.deck_id))],listIds=[...new Set(seedCards.map(c=>c.list_id))],loaded=await Promise.all([...deckIds.map(id=>loadMaterialNodes(id)),...listIds.map(id=>loadWordCards(id))]),nodes=loaded.slice(0,deckIds.length).flat() as MaterialNode[],cards=loaded.slice(deckIds.length).flat() as WordCard[];return{nodes,cards}}
 export async function saveMaterialNode(input:Omit<MaterialNode,"id"|"created_at"|"state">){if(!hasSupabaseEnv)return{id:crypto.randomUUID(),created_at:new Date().toISOString(),...input};const{data,error}=await db().rpc("save_material_node",{p_deck_id:input.deck_id,p_parent_id:input.parent_id,p_node_type:input.node_type,p_title:input.title,p_memo:input.memo,p_order_index:input.order_index});fail(error);return data as MaterialNode}
 export async function updateMaterialNode(id:string,input:Partial<MaterialNode>){if(!hasSupabaseEnv)return;const{error}=await db().from("material_nodes").update(input).eq("id",id);fail(error)}
 export async function deleteMaterialNode(id:string){if(!hasSupabaseEnv)return;const{error}=await db().from("material_nodes").delete().eq("id",id);fail(error)}
