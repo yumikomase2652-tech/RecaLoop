@@ -20,7 +20,10 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
     } catch {}
     (type === "material" ? loadSharedMaterial(token) : loadSharedCards(token))
       .then(setData)
-      .catch((error) => setMessage(error.message));
+      .catch((error) => {
+        console.error("Shared content load failed", error);
+        setMessage(error.message);
+      });
   }, [token, type]);
 
   const copy = async () => {
@@ -93,5 +96,5 @@ function SharedTree({ nodes }: { nodes: MaterialNode[] }) {
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
-  return <main className="min-h-screen bg-[#f4f7f8] p-4 md:p-10"><div className="max-w-3xl mx-auto"><Link href="/" className="inline-flex items-center gap-2 font-black"><Sparkles size={20} className="text-[#3f8fb8]" />RecaLoop</Link><div className="mt-10">{children}</div></div></main>;
+  return <main className="min-h-screen bg-[#f4f7f8] p-4 md:p-10"><div className="max-w-3xl mx-auto"><div className="data-source-badge">Data source: Supabase</div><Link href="/" className="inline-flex items-center gap-2 font-black"><Sparkles size={20} className="text-[#3f8fb8]" />RecaLoop</Link><div className="mt-10">{children}</div></div></main>;
 }

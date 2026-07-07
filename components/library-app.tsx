@@ -23,6 +23,7 @@ export function LibraryApp() {
     try {
       setItems(await loadLibrary(q, selectedType));
     } catch (error) {
+      console.error("Library load failed", error);
       setMessage((error as Error).message);
     } finally {
       setLoading(false);
@@ -36,7 +37,10 @@ export function LibraryApp() {
     } catch {}
     loadLibrary("", "all")
       .then(setItems)
-      .catch((error) => setMessage((error as Error).message))
+      .catch((error) => {
+        console.error("Library initial load failed", error);
+        setMessage((error as Error).message);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -74,6 +78,7 @@ export function LibraryApp() {
 
   return <><AppRouteNav active="library" /><main className="app-page min-h-screen p-4 pb-28 md:p-10">
     <div className="max-w-6xl mx-auto">
+      <div className="data-source-badge">Data source: Supabase</div>
       {viewer && <button className="viewer-banner" onClick={() => { localStorage.removeItem("recaloop-viewer"); location.href = "/dashboard"; }}><b>{viewer.name}さんの画面を表示中</b><span>戻る</span></button>}
       <div className="flex flex-wrap justify-between gap-3 items-end mt-3">
        <div>
