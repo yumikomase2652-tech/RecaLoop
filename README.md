@@ -167,7 +167,7 @@ CSVは左から右を大階層から小階層として解釈し、最後の列�
 
 カードには表面・裏面それぞれに画像または音声を添付できます。メディア本体はSupabaseには保存せず、ブラウザのIndexedDBに端末内保存します。カード側は`front_media_ids` / `back_media_ids`で内部メディアIDを参照します。
 
-`.recaloop`ファイルはzip形式で、次の構成です。
+`.recaloop`ファイルは通常のZIPファイルです。手作業で作る場合も、次の構成のZIPを作成して拡張子を`.recaloop`に変更すれば読み込めます。書き出し時もWindows/macOSで展開できる通常ZIPとして生成します。
 
 ```text
 deck.json
