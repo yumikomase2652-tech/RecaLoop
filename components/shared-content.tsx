@@ -58,15 +58,14 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
 
   const source = type === "material" ? (data as SharedMaterial).deck : (data as SharedCards).list;
   const title = source.title;
-  const approved = source.visibility === "approved";
   return <Frame>
     {viewer && <button className="viewer-banner" onClick={() => { localStorage.removeItem("recaloop-viewer"); location.href = "/dashboard"; }}><b>{viewer.name}さんの画面を表示中</b><span>戻る</span></button>}
-    <Link href="/library" className="back-link">← 公開ライブラリへ戻る</Link>
+    <Link href="/dashboard?view=decks" className="back-link">← デッキへ戻る</Link>
     <div className="flex flex-wrap justify-between gap-4 items-end">
       <div>
-        <span className="tag">{approved ? "公開ライブラリ" : "個別配布"}</span>
+        <span className="tag">配布リンク</span>
         <h1 className="text-3xl font-black mt-3">{title}</h1>
-        <p className="text-sm text-[#718398] mt-2">{approved ? "運営が承認した公開コンテンツです" : `${type === "material" ? "教材デッキ" : "暗記カード"}の配布リンクです`}</p>
+        <p className="text-sm text-[#718398] mt-2">このリンクを知っている人は、学習デッキを自分のアカウントにコピーして使えます。</p>
         {source.edition_label && <p className="text-xs text-[#718398] mt-2">版・年度: {source.edition_label}</p>}
         {source.description && <p className="text-sm text-[#263b4a] mt-3 max-w-2xl">{source.description}</p>}
       </div>
@@ -96,5 +95,5 @@ function SharedTree({ nodes }: { nodes: MaterialNode[] }) {
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
-  return <main className="min-h-screen bg-[#f4f7f8] p-4 md:p-10"><div className="max-w-3xl mx-auto"><div className="data-source-badge">Data source: Supabase</div><Link href="/" className="inline-flex items-center gap-2 font-black"><Sparkles size={20} className="text-[#3f8fb8]" />RecaLoop</Link><div className="mt-10">{children}</div></div></main>;
+  return <main className="min-h-screen bg-[#f4f7f8] p-4 md:p-10"><div className="max-w-3xl mx-auto"><Link href="/" className="inline-flex items-center gap-2 font-black"><Sparkles size={20} className="text-[#3f8fb8]" />RecaLoop</Link><div className="mt-10">{children}</div></div></main>;
 }

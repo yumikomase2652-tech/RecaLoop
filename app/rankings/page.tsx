@@ -1,2 +1,5 @@
-import { RankingsApp } from "@/components/rankings-app";
-export default function Page() { return <RankingsApp />; }
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/dashboard?view=decks");
+}

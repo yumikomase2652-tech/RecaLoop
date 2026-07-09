@@ -1,1 +1,5 @@
-import{LibraryApp}from"@/components/library-app";export default function Page(){return <LibraryApp/>}
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/dashboard?view=decks");
+}
