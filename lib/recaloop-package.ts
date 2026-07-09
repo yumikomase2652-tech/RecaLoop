@@ -79,6 +79,20 @@ function stripRefs(text: string, deckId: string) {
 function mediaId(deckId: string, fileName: string) {
   return `recaloop:${deckId}:${fileName}`;
 }
+function hashString(value: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+function stableCardId(deckId: string, sourceId: string | null | undefined, fallback: string) {
+  return sourceId || `card_${hashString(`${deckId}:${fallback}`)}`;
+}
+function looksLikeExplicitCardId(value: string | null | undefined) {
+  return Boolean(value && (/^(card|cid)[_-]/i.test(value) || /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value)));
+}
 function mimeFromName(fileName: string) {
   return fileName.match(/\.(mp3|m4a|wav)$/i) ? "audio/mpeg" : fileName.match(/\.webp$/i) ? "image/webp" : fileName.match(/\.png$/i) ? "image/png" : "image/jpeg";
 }
@@ -99,7 +113,9 @@ export async function exportWordDeckPackage(list: WordList, cards: WordCard[]) {
   const csvRows = cards.sort((a, b) => a.order_index - b.order_index).map((card, index) => {
     const frontRefs = (card.front_media_ids || []).map(id => mediaNames.get(id)).filter(Boolean) as string[];
     const backRefs = (card.back_media_ids || []).map(id => mediaNames.get(id)).filter(Boolean) as string[];
-    return [list.title, "カード", "", "", "", card.card_id || String(index + 1).padStart(4, "0"), `${withRefs(card.front, frontRefs)};${withRefs(card.back, backRefs)}`].map(csvCell).join(",");
+    const problemNumber = card.card_id || String(index + 1).padStart(4, "0");
+    const cardId = stableCardId(deckId, card.card_id, `${card.id}:${index}:${card.front}:${card.back}`);
+    return [list.title, "カード", "", "", "", problemNumber, cardId, `${withRefs(card.front, frontRefs)};${withRefs(card.back, backRefs)}`].map(csvCell).join(",");
   });
   return createStoredZip([{ path: "deck.json", data: encoder.encode(JSON.stringify(deck, null, 2)) }, { path: "cards.csv", data: encoder.encode(csvRows.join("\n")) }, ...files]);
 }
@@ -126,7 +142,7 @@ export async function exportMaterialDeckPackage(deck: MaterialDeck, nodes: Mater
     .map(node => {
       const hierarchy = [...pathFor(node), node.title].slice(0, 6);
       while (hierarchy.length < 6) hierarchy.push("");
-      return [...hierarchy, node.memo || node.title].map(csvCell).join(",");
+      return [...hierarchy, stableCardId(deckId, node.id, `${node.title}:${node.order_index}`), node.memo || node.title].map(csvCell).join(",");
     });
   return createStoredZip([
     { path: "deck.json", data: encoder.encode(JSON.stringify(meta, null, 2)) },
@@ -148,8 +164,8 @@ export async function importWordDeckPackage(file: File) {
   const cards = files.has("cards.json")
     ? (JSON.parse(decoded) as RecaloopCardImport[])
     : parseCsv(decoded).map((row, index) => {
-      const content = row.at(-1) || "", before = row.slice(0, -1).filter(Boolean), [frontRaw, ...backParts] = content.split(";"), front = stripRefs(frontRaw || "", deck.deckId), back = stripRefs(backParts.join(";"), deck.deckId);
-      return { card_id: before.at(-1) || String(index + 1).padStart(4, "0"), front: front.text, back: back.text, memo: before.slice(0, -1).join(" / ") || null, order_index: index, front_media_ids: front.ids, back_media_ids: back.ids };
+      const content = row.at(-1) || "", before = row.slice(0, -1).filter(Boolean), lastBefore = before.at(-1) || null, hasExplicitCardId = before.length >= 8 || looksLikeExplicitCardId(lastBefore), explicitCardId = hasExplicitCardId ? lastBefore : null, hierarchy = hasExplicitCardId ? before.slice(0, -1) : before, [frontRaw, ...backParts] = content.split(";"), front = stripRefs(frontRaw || "", deck.deckId), back = stripRefs(backParts.join(";"), deck.deckId), fingerprint = `${hierarchy.join("/")}:${front.text}:${back.text}:${index}`;
+      return { card_id: stableCardId(deck.deckId, explicitCardId, fingerprint), front: front.text, back: back.text, memo: hierarchy.join(" / ") || null, order_index: index, front_media_ids: front.ids, back_media_ids: back.ids };
     });
   return { deck, cards };
 }
