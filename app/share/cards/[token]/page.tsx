@@ -1,1 +1,5 @@
-import{SharedContent}from"@/components/shared-content";export default async function Page({params}:{params:Promise<{token:string}>}){const{token}=await params;return <SharedContent type="cards" token={token}/>}
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/dashboard?view=decks");
+}

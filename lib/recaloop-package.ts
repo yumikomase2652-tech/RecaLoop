@@ -1,5 +1,5 @@
 import { getLocalMedia, saveLocalMedia } from "./local-media";
-import type { WordCard, WordList } from "./types";
+import type { MaterialDeck, MaterialNode, WordCard, WordList } from "./types";
 
 type ZipFile = { path: string; data: Uint8Array };
 export type RecaloopDeckMeta = { deckId: string; title: string; description?: string | null; createdAt: string; updatedAt: string; appVersion: string; reviewMode: "default" | "light" };
@@ -99,9 +99,39 @@ export async function exportWordDeckPackage(list: WordList, cards: WordCard[]) {
   const csvRows = cards.sort((a, b) => a.order_index - b.order_index).map((card, index) => {
     const frontRefs = (card.front_media_ids || []).map(id => mediaNames.get(id)).filter(Boolean) as string[];
     const backRefs = (card.back_media_ids || []).map(id => mediaNames.get(id)).filter(Boolean) as string[];
-    return [list.title, "暗記カード", "", "", "", card.card_id || String(index + 1).padStart(4, "0"), `${withRefs(card.front, frontRefs)};${withRefs(card.back, backRefs)}`].map(csvCell).join(",");
+    return [list.title, "カード", "", "", "", card.card_id || String(index + 1).padStart(4, "0"), `${withRefs(card.front, frontRefs)};${withRefs(card.back, backRefs)}`].map(csvCell).join(",");
   });
   return createStoredZip([{ path: "deck.json", data: encoder.encode(JSON.stringify(deck, null, 2)) }, { path: "cards.csv", data: encoder.encode(csvRows.join("\n")) }, ...files]);
+}
+
+export async function exportMaterialDeckPackage(deck: MaterialDeck, nodes: MaterialNode[]) {
+  const deckId = deck.external_deck_id || deck.source_content_id || deck.id;
+  const now = new Date().toISOString();
+  const meta: RecaloopDeckMeta = { deckId, title: deck.title, description: deck.description || null, createdAt: deck.created_at || now, updatedAt: deck.updated_at || now, appVersion: "recaloop-web", reviewMode: deck.review_mode || "default" };
+  const byId = new Map(nodes.map(node => [node.id, node]));
+  const pathFor = (node: MaterialNode) => {
+    const titles: string[] = [];
+    let parent = node.parent_id;
+    while (parent) {
+      const current = byId.get(parent);
+      if (!current) break;
+      titles.unshift(current.title);
+      parent = current.parent_id;
+    }
+    return titles;
+  };
+  const rows = nodes
+    .filter(node => node.node_type === "item")
+    .sort((a, b) => a.order_index - b.order_index)
+    .map(node => {
+      const hierarchy = [...pathFor(node), node.title].slice(0, 6);
+      while (hierarchy.length < 6) hierarchy.push("");
+      return [...hierarchy, node.memo || node.title].map(csvCell).join(",");
+    });
+  return createStoredZip([
+    { path: "deck.json", data: encoder.encode(JSON.stringify(meta, null, 2)) },
+    { path: "cards.csv", data: encoder.encode(rows.join("\n")) },
+  ]);
 }
 
 export async function importWordDeckPackage(file: File) {
