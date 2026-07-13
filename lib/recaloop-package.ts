@@ -4,6 +4,7 @@ import type { MaterialDeck, MaterialNode, WordCard, WordList } from "./types";
 type ZipFile = { path: string; data: Uint8Array };
 export type RecaloopDeckMeta = { deckId: string; title: string; description?: string | null; createdAt: string; updatedAt: string; appVersion: string; reviewMode: "default" | "light" };
 export type RecaloopCardImport = Pick<WordCard, "card_id" | "front" | "back" | "memo" | "order_index"> & { front_media_ids: string[]; back_media_ids: string[] };
+export type RecaloopExportSummary = { title: string; cardCount: number; imageCount: number; audioCount: number; mediaCount: number; missingMedia: string[]; fileName: string };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -78,10 +79,6 @@ function parseCsv(text: string) {
   }
   current.push(cell.trim()); if (current.some(Boolean)) rows.push(current);
   return rows;
-}
-function mediaRefName(id: string, fileName: string) {
-  const ext = fileName.includes(".") ? fileName.slice(fileName.lastIndexOf(".")) : "";
-  return `${id}${ext}`;
 }
 function withRefs(text: string, refs: string[]) {
   return `${text || ""}${refs.map(ref => `[${ref}]`).join("")}`;
@@ -158,18 +155,47 @@ function stableCardId(deckId: string, sourceId: string | null | undefined, fallb
 function mimeFromName(fileName: string) {
   return fileName.match(/\.(mp3|m4a|wav)$/i) ? "audio/mpeg" : fileName.match(/\.webp$/i) ? "image/webp" : fileName.match(/\.png$/i) ? "image/png" : "image/jpeg";
 }
+function mediaExtension(fileName: string) {
+  const match = fileName.match(/\.[a-z0-9]+$/i);
+  return match ? match[0].toLowerCase() : "";
+}
+function numberedMediaName(index: number, fileName: string) {
+  return `${String(index + 1).padStart(4, "0")}${mediaExtension(fileName) || ".bin"}`;
+}
+function cleanFileName(value: string) {
+  return (value || "deck").replace(/\.recaloop$/i, "").replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, "_").replace(/^_+|_+$/g, "") || "deck";
+}
+export function recaloopFileName(value: string) {
+  return `${cleanFileName(value)}.recaloop`;
+}
+function isAudioMedia(fileName: string, mimeType?: string) {
+  return Boolean(mimeType?.startsWith("audio/") || fileName.match(/\.(mp3|m4a|wav|ogg)$/i));
+}
+async function collectWordMedia(cards: WordCard[]) {
+  const ids = [...new Set(cards.flatMap(card => [...(card.front_media_ids || []), ...(card.back_media_ids || [])]))], mediaNames = new Map<string, string>(), files: ZipFile[] = [], missingMedia: string[] = [];
+  let imageCount = 0, audioCount = 0;
+  for (const [index, id] of ids.entries()) {
+    const media = await getLocalMedia(id);
+    if (!media) { missingMedia.push(id); continue; }
+    const name = numberedMediaName(index, media.fileName);
+    mediaNames.set(id, name);
+    if (isAudioMedia(media.fileName, media.mimeType)) audioCount++; else imageCount++;
+    files.push({ path: `media/${name}`, data: new Uint8Array(await media.blob.arrayBuffer()) });
+  }
+  return { mediaNames, files, imageCount, audioCount, missingMedia };
+}
+export async function summarizeWordDeckPackage(list: WordList, cards: WordCard[]): Promise<RecaloopExportSummary> {
+  const media = await collectWordMedia(cards);
+  return { title: list.title, cardCount: cards.length, imageCount: media.imageCount, audioCount: media.audioCount, mediaCount: media.imageCount + media.audioCount, missingMedia: media.missingMedia, fileName: recaloopFileName(list.title) };
+}
+export function summarizeMaterialDeckPackage(deck: MaterialDeck, nodes: MaterialNode[]): RecaloopExportSummary {
+  return { title: deck.title, cardCount: nodes.filter(node => node.node_type === "item").length, imageCount: 0, audioCount: 0, mediaCount: 0, missingMedia: [], fileName: recaloopFileName(deck.title) };
+}
 
 export async function exportWordDeckPackage(list: WordList, cards: WordCard[]) {
   const deckId = list.external_deck_id || list.source_content_id || list.id;
-  const mediaNames = new Map<string, string>();
-  const files: ZipFile[] = [];
-  for (const id of [...new Set(cards.flatMap(card => [...(card.front_media_ids || []), ...(card.back_media_ids || [])]))]) {
-    const media = await getLocalMedia(id);
-    if (!media) continue;
-    const name = mediaRefName(id.replace(/^recaloop:[^:]+:/, ""), media.fileName);
-    mediaNames.set(id, name);
-    files.push({ path: `media/${name}`, data: new Uint8Array(await media.blob.arrayBuffer()) });
-  }
+  const { mediaNames, files, missingMedia } = await collectWordMedia(cards);
+  if (missingMedia.length) throw new Error(`メディア参照切れがあります: ${missingMedia.length}件`);
   const now = new Date().toISOString();
   const deck: RecaloopDeckMeta = { deckId, title: list.title, description: list.description || null, createdAt: list.created_at || now, updatedAt: list.updated_at || now, appVersion: "recaloop-web", reviewMode: list.review_mode || "default" };
   const csvRows = cards.sort((a, b) => a.order_index - b.order_index).map((card, index) => {
@@ -252,7 +278,7 @@ export async function importWordDeckPackage(file: File) {
 export function downloadRecaloopPackage(blob: Blob, title: string) {
   const url = URL.createObjectURL(blob), a = document.createElement("a");
   a.href = url;
-  a.download = `${title || "deck"}.recaloop`;
+  a.download = recaloopFileName(title || "deck");
   a.click();
   URL.revokeObjectURL(url);
 }

@@ -1,26 +1,33 @@
 "use client";
 
 import { useMemo,useState } from "react";
-import { createStoredZip,downloadRecaloopPackage } from "@/lib/recaloop-package";
+import { createStoredZip,downloadRecaloopPackage,recaloopFileName } from "@/lib/recaloop-package";
 
 const encoder = new TextEncoder();
 const sampleCsv = `数学,第1章,1,,,,[0001.png];
 数学,第1章,2,,,,問題[0002.png];答えは4
 英語,単語,1,,,,[front.png];[back.png]`;
+type BuilderMedia={file:File;name:string};
+const mediaExt=(name:string)=>name.match(/\.[a-z0-9]+$/i)?.[0].toLowerCase()||".bin";
+const mediaName=(index:number,file:File)=>`${String(index+1).padStart(4,"0")}${mediaExt(file.name)}`;
+const isAudio=(name:string)=>/\.(mp3|m4a|wav|ogg)$/i.test(name);
 
 export default function DeckBuilderPage(){
-  const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<File[]>([]),[message,setMessage]=useState("");
-  const mediaNames=useMemo(()=>files.map(file=>file.name),[files]);
-  const addFiles=(next:FileList|null)=>{if(!next?.length)return;setFiles(current=>{const map=new Map(current.map(file=>[file.name,file]));Array.from(next).forEach(file=>map.set(file.name,file));return[...map.values()]})};
+  const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<BuilderMedia[]>([]),[message,setMessage]=useState("");
+  const mediaNames=useMemo(()=>files.map(item=>item.name),[files]);
+  const addFiles=(next:FileList|null)=>{if(!next?.length)return;setFiles(current=>{const existing=new Set(current.map(item=>`${item.file.name}:${item.file.size}`)),added:BuilderMedia[]=[];Array.from(next).forEach(file=>{const key=`${file.name}:${file.size}`;if(existing.has(key))return;existing.add(key);added.push({file,name:mediaName(current.length+added.length,file)})});return[...current,...added]})};
   const insertRef=(name:string)=>setCsv(value=>`${value}${value.endsWith("\n")||!value?"":"\n"},,,,,,[${name}];`);
   const exportDeck=async()=>{
     setMessage("");
     try{
       const deckId=`deck_${crypto.randomUUID()}`,now=new Date().toISOString();
       const deck={deckId,title:title.trim()||"RecaLoopデッキ",description:description.trim()||null,createdAt:now,updatedAt:now,appVersion:"recaloop-web",reviewMode:"default"};
-      const media=await Promise.all(files.map(async file=>({path:`media/${file.name}`,data:new Uint8Array(await file.arrayBuffer())})));
+      const cardCount=csv.split(/\r?\n/).filter(line=>line.trim()).length,imageCount=files.filter(item=>!isAudio(item.name)).length,audioCount=files.filter(item=>isAudio(item.name)).length;
+      const fileName=prompt(`「${deck.title}」を書き出します\n\nカード：${cardCount}枚\n画像：${imageCount}件\n音声：${audioCount}件\n合計メディア：${files.length}件\n\nファイル名を確認してください。`,recaloopFileName(deck.title));
+      if(!fileName)return;
+      const media=await Promise.all(files.map(async item=>({path:`media/${item.name}`,data:new Uint8Array(await item.file.arrayBuffer())})));
       const blob=createStoredZip([{path:"deck.json",data:encoder.encode(JSON.stringify(deck,null,2))},{path:"cards.csv",data:encoder.encode(csv)},...media]);
-      downloadRecaloopPackage(blob,deck.title);
+      downloadRecaloopPackage(blob,fileName);
       setMessage(".recaloopを書き出しました。");
     }catch(error){
       console.error("local deck export failed",error);
