@@ -91,7 +91,7 @@ function mediaId(deckId: string, fileName: string) {
 }
 function cleanCell(value: string | null | undefined) {
   const text = (value || "").trim();
-  return /^(none|null|undefined)$/i.test(text) ? "" : text.replace(/:(none|null|undefined)$/i, "").trim();
+  return /^(none|null|undefined)$/i.test(text) ? "" : text.replace(/[;:](none|null|undefined)$/i, "").trim();
 }
 function normalizeMediaName(value: string) {
   const trimmed = value.trim().replace(/\\/g, "/").replace(/^\.?\//, "").replace(/^media\//i, "");
@@ -131,6 +131,19 @@ async function parseCardSide(raw: string, deckId: string, side: "front" | "back"
   text = cleanCell(text.replace(/\[([^\]]+)\]/g, (_, ref: string) => isMediaRef(ref) ? "" : `[${ref}]`));
   return { text, ids };
 }
+function splitCardContent(content: string) {
+  const index = content.indexOf(";");
+  return index < 0 ? [content, ""] as const : [content.slice(0, index), content.slice(index + 1)] as const;
+}
+function parseRecaloopCsvRow(row: string[], index: number) {
+  const content = row.at(-1) || "";
+  const cellsBeforeContent = row.slice(0, -1).map(cell => cleanCell(cell));
+  const hasExplicitCardId = row.length >= 8 && Boolean(cleanCell(row[row.length - 2]));
+  const explicitCardId = hasExplicitCardId ? cleanCell(row[row.length - 2]) : null;
+  const hierarchy = (hasExplicitCardId ? cellsBeforeContent.slice(0, -1) : cellsBeforeContent).map(cleanCell).filter(Boolean);
+  const [frontRaw, backRaw] = splitCardContent(content);
+  return { content, hierarchy, explicitCardId, frontRaw, backRaw, rowNumber: index + 1 };
+}
 function hashString(value: string) {
   let hash = 2166136261;
   for (let i = 0; i < value.length; i++) {
@@ -141,9 +154,6 @@ function hashString(value: string) {
 }
 function stableCardId(deckId: string, sourceId: string | null | undefined, fallback: string) {
   return sourceId || `card_${hashString(`${deckId}:${fallback}`)}`;
-}
-function looksLikeExplicitCardId(value: string | null | undefined) {
-  return Boolean(value && (/^(card|cid)[_-]/i.test(value) || /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value)));
 }
 function mimeFromName(fileName: string) {
   return fileName.match(/\.(mp3|m4a|wav)$/i) ? "audio/mpeg" : fileName.match(/\.webp$/i) ? "image/webp" : fileName.match(/\.png$/i) ? "image/png" : "image/jpeg";
@@ -226,8 +236,14 @@ export async function importWordDeckPackage(file: File) {
     : [];
   if (!files.has("cards.json")) {
     for (const [index, row] of parseCsv(decoded).entries()) {
-      const content = row.at(-1) || "", before = row.slice(0, -1).filter(Boolean), lastBefore = before.at(-1) || null, hasExplicitCardId = before.length >= 8 || looksLikeExplicitCardId(lastBefore), explicitCardId = hasExplicitCardId ? lastBefore : null, hierarchy = hasExplicitCardId ? before.slice(0, -1) : before, [frontRaw, ...backParts] = content.split(";"), front = await parseCardSide(frontRaw || "", deck.deckId, "front", mediaIndex), back = await parseCardSide(backParts.join(";"), deck.deckId, "back", mediaIndex), fingerprint = `${hierarchy.join("/")}:${front.text}:${back.text}:${index}`;
-      cards.push({ card_id: stableCardId(deck.deckId, explicitCardId, fingerprint), front: front.text, back: back.text, memo: hierarchy.join(" / ") || null, order_index: index, front_media_ids: front.ids, back_media_ids: back.ids });
+      const parsed = parseRecaloopCsvRow(row, index), front = await parseCardSide(parsed.frontRaw || "", deck.deckId, "front", mediaIndex), back = await parseCardSide(parsed.backRaw || "", deck.deckId, "back", mediaIndex), fingerprint = `${parsed.hierarchy.join("/")}:${front.text}:${back.text}:${index}`;
+      console.info("Parsed hierarchy:", parsed.hierarchy.join(" / "));
+      console.info("Parsed frontText:", front.text);
+      console.info("Parsed backText:", back.text);
+      console.info("Parsed front media:", front.ids.length);
+      console.info("Parsed back media:", back.ids.length);
+      console.info("Has back side:", Boolean(back.text || back.ids.length));
+      cards.push({ card_id: stableCardId(deck.deckId, parsed.explicitCardId, fingerprint), front: front.text, back: back.text, memo: parsed.hierarchy.join(" / ") || null, order_index: index, front_media_ids: front.ids, back_media_ids: back.ids });
     }
   }
   return { deck, cards };

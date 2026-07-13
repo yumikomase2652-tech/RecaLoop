@@ -24,7 +24,8 @@ begin
 
  select count(*)::int into expected_cards
  from jsonb_array_elements(coalesce(p_cards,'[]'::jsonb)) e
- where nullif(e->>'front','') is not null;
+ where nullif(e->>'front','') is not null
+    or jsonb_array_length(coalesce(e->'front_media_ids','[]'::jsonb)) > 0;
 
  if expected_cards=0 then
   raise exception 'invalid CSV: no word cards to import';
@@ -33,7 +34,7 @@ begin
  for c in
   select
    nullif(e.value->>'card_id','') card_id,
-   nullif(e.value->>'front','') front,
+   coalesce(e.value->>'front','') front,
    coalesce(e.value->>'back','') back,
    nullif(e.value->>'memo','') memo,
    coalesce(nullif(e.value->>'order_index','')::int,e.ord::int-1) order_index,
@@ -49,8 +50,8 @@ begin
   from jsonb_array_elements(coalesce(p_cards,'[]'::jsonb)) with ordinality as e(value,ord)
   order by e.ord
  loop
-  if c.front is null then
-   raise exception 'invalid CSV: word card front is missing at row %',c.ord;
+  if nullif(c.front,'') is null and coalesce(array_length(c.front_media_ids,1),0)=0 then
+   raise exception 'invalid CSV: word card front/media is missing at row %',c.ord;
   end if;
 
   insert into word_cards(
