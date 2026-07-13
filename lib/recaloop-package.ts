@@ -86,16 +86,50 @@ function mediaRefName(id: string, fileName: string) {
 function withRefs(text: string, refs: string[]) {
   return `${text || ""}${refs.map(ref => `[${ref}]`).join("")}`;
 }
-function stripRefs(text: string, deckId: string) {
-  const ids: string[] = [];
-  const clean = text.replace(/\[([^\]]+)\]/g, (_, fileName: string) => {
-    ids.push(mediaId(deckId, fileName));
-    return "";
-  }).trim();
-  return { text: clean, ids };
-}
 function mediaId(deckId: string, fileName: string) {
   return `recaloop:${deckId}:${fileName}`;
+}
+function cleanCell(value: string | null | undefined) {
+  const text = (value || "").trim();
+  return /^(none|null|undefined)$/i.test(text) ? "" : text.replace(/:(none|null|undefined)$/i, "").trim();
+}
+function normalizeMediaName(value: string) {
+  const trimmed = value.trim().replace(/\\/g, "/").replace(/^\.?\//, "").replace(/^media\//i, "");
+  try {
+    return decodeURIComponent(trimmed).normalize("NFC").toLowerCase();
+  } catch {
+    return trimmed.normalize("NFC").toLowerCase();
+  }
+}
+function displayMediaName(value: string) {
+  const trimmed = value.trim().replace(/\\/g, "/").replace(/^\.?\//, "").replace(/^media\//i, "");
+  try {
+    return decodeURIComponent(trimmed).normalize("NFC");
+  } catch {
+    return trimmed.normalize("NFC");
+  }
+}
+function isMediaRef(value: string) {
+  return /\.(png|jpe?g|webp|gif|mp3|m4a|wav|ogg)$/i.test(value.trim());
+}
+type MediaEntry = { path: string; fileName: string; data: Uint8Array };
+async function parseCardSide(raw: string, deckId: string, side: "front" | "back", mediaIndex: Map<string, MediaEntry>) {
+  const ids: string[] = [];
+  let text = cleanCell(raw);
+  const refs = [...text.matchAll(/\[([^\]]+)\]/g)].map(match => match[1]).filter(isMediaRef);
+  for (const ref of refs) {
+    const fileName = displayMediaName(ref), matched = mediaIndex.get(normalizeMediaName(ref));
+    console.info("Detected media reference:", fileName);
+    if (!matched) throw new Error(`media/${fileName} が見つかりません。`);
+    const id = mediaId(deckId, fileName), body = matched.data.buffer.slice(matched.data.byteOffset, matched.data.byteOffset + matched.data.byteLength) as ArrayBuffer;
+    await saveLocalMedia(new Blob([body], { type: mimeFromName(matched.fileName) }), matched.fileName, id);
+    console.info("Matched ZIP entry:", matched.path);
+    console.info("Stored mediaId:", id);
+    console.info("Attached to:", side);
+    ids.push(id);
+  }
+  text = cleanCell(text.replace(/\[([^\]]+)\]/g, (_, ref: string) => isMediaRef(ref) ? "" : `[${ref}]`));
+  return { text, ids };
 }
 function hashString(value: string) {
   let hash = 2166136261;
@@ -179,23 +213,23 @@ export async function importWordDeckPackage(file: File) {
     throw new Error("ZIPの構成が正しくありません: deck.json を読み込めません。");
   }
   if (!deck.deckId) throw new Error("ZIPの構成が正しくありません: deck.json に deckId がありません。");
+  const mediaIndex = new Map<string, MediaEntry>();
   for (const [path, data] of files.entries()) {
-    const match = path.match(/^media\/(.+)$/);
+    const match = path.match(/^media\/(.+)$/i);
     if (!match) continue;
-    const fileName = match[1], body = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
-    await saveLocalMedia(new Blob([body], { type: mimeFromName(fileName) }), fileName, mediaId(deck.deckId, fileName));
+    const fileName = displayMediaName(match[1]);
+    mediaIndex.set(normalizeMediaName(fileName), { path, fileName, data });
   }
   const decoded = decoder.decode(cardsRaw);
   const cards = files.has("cards.json")
     ? (JSON.parse(decoded) as RecaloopCardImport[])
-    : parseCsv(decoded).map((row, index) => {
-      const content = row.at(-1) || "", before = row.slice(0, -1).filter(Boolean), lastBefore = before.at(-1) || null, hasExplicitCardId = before.length >= 8 || looksLikeExplicitCardId(lastBefore), explicitCardId = hasExplicitCardId ? lastBefore : null, hierarchy = hasExplicitCardId ? before.slice(0, -1) : before, [frontRaw, ...backParts] = content.split(";"), front = stripRefs(frontRaw || "", deck.deckId), back = stripRefs(backParts.join(";"), deck.deckId), fingerprint = `${hierarchy.join("/")}:${front.text}:${back.text}:${index}`;
-      return { card_id: stableCardId(deck.deckId, explicitCardId, fingerprint), front: front.text, back: back.text, memo: hierarchy.join(" / ") || null, order_index: index, front_media_ids: front.ids, back_media_ids: back.ids };
-    });
-  const mediaRefs = new Set(cards.flatMap(card => [...card.front_media_ids, ...card.back_media_ids]).map(id => id.replace(/^recaloop:[^:]+:/, "")));
-  const mediaFiles = new Set([...files.keys()].filter(path => path.startsWith("media/")).map(path => path.replace(/^media\//, "")));
-  const missing = [...mediaRefs].filter(name => !mediaFiles.has(name));
-  if (missing.length) throw new Error(`ZIPの構成が正しくありません: media/${missing[0]} が見つかりません。`);
+    : [];
+  if (!files.has("cards.json")) {
+    for (const [index, row] of parseCsv(decoded).entries()) {
+      const content = row.at(-1) || "", before = row.slice(0, -1).filter(Boolean), lastBefore = before.at(-1) || null, hasExplicitCardId = before.length >= 8 || looksLikeExplicitCardId(lastBefore), explicitCardId = hasExplicitCardId ? lastBefore : null, hierarchy = hasExplicitCardId ? before.slice(0, -1) : before, [frontRaw, ...backParts] = content.split(";"), front = await parseCardSide(frontRaw || "", deck.deckId, "front", mediaIndex), back = await parseCardSide(backParts.join(";"), deck.deckId, "back", mediaIndex), fingerprint = `${hierarchy.join("/")}:${front.text}:${back.text}:${index}`;
+      cards.push({ card_id: stableCardId(deck.deckId, explicitCardId, fingerprint), front: front.text, back: back.text, memo: hierarchy.join(" / ") || null, order_index: index, front_media_ids: front.ids, back_media_ids: back.ids });
+    }
+  }
   return { deck, cards };
 }
 
