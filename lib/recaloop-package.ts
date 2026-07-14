@@ -54,11 +54,17 @@ async function retryExportStep<T>(stage: string, fileName: string | undefined, b
   }
   throw formatExportError(stage, fileName, batch, last);
 }
-async function zipInputBytes(file: ZipInputFile, batch: number) {
-  if (file.data instanceof Uint8Array) return file.data;
+async function zipInputEntry(file: ZipInputFile, batch: number) {
+  if (file.data instanceof Uint8Array) return { part: blobPart(file.data), size: file.data.length, crc: crc32(file.data), fallback: false };
   const blob = file.data;
   console.info("メディアBlob読み込み", file.path, `batch ${batch}`);
-  return retryExportStep("media-read", file.path, batch, async () => new Uint8Array(await blob.arrayBuffer()));
+  try {
+    const bytes = await retryExportStep("media-read", file.path, batch, async () => new Uint8Array(await blob.arrayBuffer()));
+    return { part: blobPart(bytes), size: bytes.length, crc: crc32(bytes), fallback: false };
+  } catch (error) {
+    console.warn(`media-read fallback: ${file.path} は直接BlobとしてZIPに追加します`, error);
+    return { part: blob as BlobPart, size: blob.size, crc: 0, fallback: true };
+  }
 }
 export async function createStoredZipStable(files: ZipInputFile[], batchSize = 1) {
   const locals: BlobPart[] = [], centrals: Uint8Array[] = [];
@@ -66,15 +72,15 @@ export async function createStoredZipStable(files: ZipInputFile[], batchSize = 1
   console.info("deck.json/cards.csv/media ZIP生成 start");
   for (let start = 0; start < files.length; start += batchSize) {
     const batch = Math.floor(start / batchSize) + 1, chunk = files.slice(start, start + batchSize);
-    const loaded = await Promise.all(chunk.map(file => zipInputBytes(file, batch).then(bytes => ({ file, bytes }))));
-    for (const { file, bytes } of loaded) {
+    const loaded = await Promise.all(chunk.map(file => zipInputEntry(file, batch).then(entry => ({ file, entry }))));
+    for (const { file, entry } of loaded) {
       try {
-        const name = encoder.encode(file.path), crc = crc32(bytes);
-        const local = concat([u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0), u32(crc), u32(bytes.length), u32(bytes.length), u16(name.length), u16(0), name]);
-        locals.push(blobPart(local), blobPart(bytes));
-        centrals.push(concat([u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0), u32(crc), u32(bytes.length), u32(bytes.length), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]));
-        offset += local.length + bytes.length;
-        console.info("各メディアのZIP追加", file.path, `${bytes.length} bytes`, `batch ${batch}`);
+        const name = encoder.encode(file.path);
+        const local = concat([u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0), u32(entry.crc), u32(entry.size), u32(entry.size), u16(name.length), u16(0), name]);
+        locals.push(blobPart(local), entry.part);
+        centrals.push(concat([u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0), u32(entry.crc), u32(entry.size), u32(entry.size), u16(name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name]));
+        offset += local.length + entry.size;
+        console.info("各メディアのZIP追加", file.path, `${entry.size} bytes`, `batch ${batch}${entry.fallback?" fallback":""}`);
       } catch (error) {
         throw formatExportError("zip-entry-add", file.path, batch, error);
       }
