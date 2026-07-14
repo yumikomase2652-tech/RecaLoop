@@ -59,7 +59,7 @@ async function zipInputBytes(file: ZipInputFile, batch: number) {
   console.info("メディアBlob読み込み", file.path, `batch ${batch}`);
   return retryExportStep("media-read", file.path, batch, async () => new Uint8Array(await blob.arrayBuffer()));
 }
-export async function createStoredZipStable(files: ZipInputFile[], batchSize = 4) {
+export async function createStoredZipStable(files: ZipInputFile[], batchSize = 1) {
   const locals: BlobPart[] = [], centrals: Uint8Array[] = [];
   let offset = 0;
   console.info("deck.json/cards.csv/media ZIP生成 start");
@@ -117,6 +117,7 @@ export async function readZip(buffer: ArrayBuffer) {
     if (method === 0) files.set(name, compressed);
     else if (method === 8) files.set(name, await inflateRaw(compressed));
     else throw new Error(`ZIPの構成が正しくありません: ${name} の圧縮方式に対応していません。`);
+    if (index % 20 === 0) await new Promise(resolve => setTimeout(resolve, 0));
   }
   return files;
 }
@@ -178,13 +179,9 @@ function parseCardSide(raw: string, deckKey: string, side: "front" | "back", med
   refs.push(...[...text.matchAll(/\[([^\]]+)\]/g)].map(match => match[1]).filter(isMediaRef));
   for (const ref of refs) {
     const fileName = displayMediaName(ref), matched = mediaIndex.get(normalizeMediaName(ref));
-    console.info("Detected media reference:", fileName);
     if (!matched) throw new Error(`media/${fileName} が見つかりません。`);
-    const id = mediaId(deckKey, fileName), body = matched.data.buffer.slice(matched.data.byteOffset, matched.data.byteOffset + matched.data.byteLength) as ArrayBuffer, blob = new Blob([body], { type: mimeFromName(matched.fileName) });
+    const id = mediaId(deckKey, fileName), blob = new Blob([matched.data as unknown as BlobPart], { type: mimeFromName(matched.fileName) });
     if (!mediaQueue.has(id)) mediaQueue.set(id, { input: { id, fileName: matched.fileName, mimeType: blob.type || "application/octet-stream", kind: isAudioMedia(matched.fileName, blob.type) ? "audio" : "image", size: blob.size, blob }, side, path: matched.path });
-    console.info("Matched ZIP entry:", matched.path);
-    console.info("Queued mediaId:", id);
-    console.info("Attached to:", side);
     ids.push(id);
   }
   text = cleanCell(text.replace(/\[([^\]]+)\]/g, (_, ref: string) => isMediaRef(ref) ? "" : `[${ref}]`));
@@ -296,7 +293,7 @@ export async function exportMaterialDeckPackage(deck: MaterialDeck, nodes: Mater
     .map(node => {
       const hierarchy = pathFor(node).slice(0, 5);
       while (hierarchy.length < 5) hierarchy.push("");
-      return [...hierarchy, node.title, node.memo || ""].map(csvCell).join(",");
+      return [...hierarchy, node.title, node.memo ? `${node.memo};` : ";"].map(csvCell).join(",");
     });
   return createStoredZipStable([
     { path: "deck.json", data: encoder.encode(JSON.stringify(meta, null, 2)) },
@@ -357,12 +354,6 @@ export async function importWordDeckPackage(file: File, options: RecaloopImportO
     started = performance.now();
     for (const [index, row] of rows.entries()) {
       const deckKey = packageKey(deck), parsed = parseRecaloopCsvRow(row, index), front = parseCardSide(parsed.frontRaw || "", deckKey, "front", mediaIndex, mediaQueue), back = parseCardSide(parsed.backRaw || "", deckKey, "back", mediaIndex, mediaQueue);
-      console.info("Parsed hierarchy:", parsed.hierarchy.join(" / "));
-      console.info("Parsed frontText:", front.text);
-      console.info("Parsed backText:", back.text);
-      console.info("Parsed front media:", front.ids.length);
-      console.info("Parsed back media:", back.ids.length);
-      console.info("Has back side:", Boolean(back.text || back.ids.length));
       cards.push({ card_id: parsed.explicitCardId, front: front.text, back: back.text, memo: parsed.hierarchy.join(" / ") || null, order_index: index, front_media_ids: front.ids, back_media_ids: back.ids });
       if (index % 100 === 0) {
         options.onProgress?.({ phase: "カード解析", cardsDone: index + 1, cardsTotal: rows.length });
@@ -372,8 +363,11 @@ export async function importWordDeckPackage(file: File, options: RecaloopImportO
     logTiming(timings, "カード生成", started);
   }
   const mediaInputs = [...mediaQueue.values()].map(item => item.input), imageCount = mediaInputs.filter(item => item.kind === "image").length, audioCount = mediaInputs.filter(item => item.kind === "audio").length;
+  mediaQueue.clear();
+  mediaIndex.clear();
+  files.clear();
   started = performance.now();
-  const mediaResult = await saveLocalMediaBatch(mediaInputs, 24, (done, total) => options.onProgress?.({ phase: "メディア保存", mediaDone: done, mediaTotal: total, imageCount, audioCount, cardsDone: cards.length, cardsTotal: cards.length }));
+  const mediaResult = await saveLocalMediaBatch(mediaInputs, 4, (done, total) => options.onProgress?.({ phase: "メディア保存", mediaDone: done, mediaTotal: total, imageCount, audioCount, cardsDone: cards.length, cardsTotal: cards.length }));
   logTiming(timings, "画像保存", started);
   const elapsedMs = Math.round(performance.now() - totalStart);
   console.info(`インポート合計 ${elapsedMs}ms`);

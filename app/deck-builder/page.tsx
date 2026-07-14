@@ -28,7 +28,7 @@ export default function DeckBuilderPage(){
       const fileName=prompt(`「${deck.title}」を書き出します\n\nカード：${cardCount}枚\n画像：${imageCount}件\n音声：${audioCount}件\n合計メディア：${files.length}件\n\nファイル名を確認してください。`,recaloopFileName(deck.title));
       if(!fileName)return;
       const media=files.map(item=>({path:`media/${item.name}`,data:item.file}));
-      const blob=await createStoredZipStable([{path:"deck.json",data:encoder.encode(JSON.stringify(deck,null,2))},{path:"cards.csv",data:encoder.encode(csv)},...media],4);
+      const blob=await createStoredZipStable([{path:"deck.json",data:encoder.encode(JSON.stringify(deck,null,2))},{path:"cards.csv",data:encoder.encode(csv)},...media],1);
       downloadRecaloopPackage(blob,fileName);
       setMessage(".recaloopを書き出しました。");
     }catch(error){
