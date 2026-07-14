@@ -43,29 +43,11 @@ function formatExportError(stage: string, fileName: string | undefined, batch: n
   console.error(detail, cause);
   return new Error(detail);
 }
-async function retryExportStep<T>(stage: string, fileName: string | undefined, batch: number | undefined, run: () => Promise<T>) {
-  let last: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      return await run();
-    } catch (error) {
-      last = error;
-      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 120 + attempt * 120));
-    }
-  }
-  throw formatExportError(stage, fileName, batch, last);
-}
 async function zipInputEntry(file: ZipInputFile, batch: number) {
   if (file.data instanceof Uint8Array) return { part: blobPart(file.data), size: file.data.length, crc: crc32(file.data), fallback: false };
   const blob = file.data;
-  console.info("メディアBlob読み込み", file.path, `batch ${batch}`);
-  try {
-    const bytes = await retryExportStep("media-read", file.path, batch, async () => new Uint8Array(await blob.arrayBuffer()));
-    return { part: blobPart(bytes), size: bytes.length, crc: crc32(bytes), fallback: false };
-  } catch (error) {
-    console.warn(`media-read fallback: ${file.path} は直接BlobとしてZIPに追加します`, error);
-    return { part: blob as BlobPart, size: blob.size, crc: 0, fallback: true };
-  }
+  console.info("メディアBlobを直接ZIPに追加", file.path, `batch ${batch}`);
+  return { part: blob as BlobPart, size: blob.size, crc: 0, fallback: true };
 }
 export async function createStoredZipStable(files: ZipInputFile[], batchSize = 1) {
   const locals: BlobPart[] = [], centrals: Uint8Array[] = [];
