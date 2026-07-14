@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo,useState } from "react";
-import { createStoredZipStable,downloadRecaloopPackage,recaloopFileName } from "@/lib/recaloop-package";
+import { createStoredZipStable,downloadRecaloopPackage,recaloopFileName,renameMediaReferences } from "@/lib/recaloop-package";
 
 const encoder = new TextEncoder();
 const sampleCsv = `Ⅰ,第1章 数と式,,,,1,[0001.png];
@@ -15,7 +15,7 @@ const isAudio=(name:string)=>/\.(mp3|m4a|wav|ogg)$/i.test(name);
 export default function DeckBuilderPage(){
   const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<BuilderMedia[]>([]),[message,setMessage]=useState(""),[exporting,setExporting]=useState(false),[download,setDownload]=useState<{url:string;fileName:string}|null>(null);
   const mediaNames=useMemo(()=>files.map(item=>item.name),[files]);
-  const addFiles=(next:FileList|null)=>{if(!next?.length)return;setFiles(current=>{const existing=new Set(current.map(item=>`${item.file.name}:${item.file.size}`)),added:BuilderMedia[]=[];Array.from(next).forEach(file=>{const key=`${file.name}:${file.size}`;if(existing.has(key))return;existing.add(key);added.push({file,name:mediaName(current.length+added.length,file)})});return[...current,...added]})};
+  const addFiles=(next:FileList|null)=>{if(!next?.length)return;setFiles(current=>{const existing=new Set(current.map(item=>`${item.file.name}:${item.file.size}`)),usedNames=new Set(current.map(item=>item.name)),added:BuilderMedia[]=[];Array.from(next).forEach(file=>{const key=`${file.name}:${file.size}`;if(existing.has(key))return;existing.add(key);let name=file.name,dupe=2;while(usedNames.has(name)){const ext=mediaExt(file.name),base=file.name.slice(0,file.name.length-ext.length);name=`${base}_${dupe}${ext}`;dupe++}usedNames.add(name);added.push({file,name})});return[...current,...added]})};
   const insertRef=(name:string)=>setCsv(value=>`${value}${value.endsWith("\n")||!value?"":"\n"},,,,,問題番号,[${name}];`);
   const exportDeck=async()=>{
     setMessage("");
@@ -28,8 +28,10 @@ export default function DeckBuilderPage(){
       const cardCount=csv.split(/\r?\n/).filter(line=>line.trim()).length,imageCount=files.filter(item=>!isAudio(item.name)).length,audioCount=files.filter(item=>isAudio(item.name)).length;
       const fileName=prompt(`「${deck.title}」を書き出します\n\nカード：${cardCount}枚\n画像：${imageCount}件\n音声：${audioCount}件\n合計メディア：${files.length}件\n\nファイル名を確認してください。`,recaloopFileName(deck.title));
       if(!fileName)return;
-      const media=files.map(item=>({path:`media/${item.name}`,data:item.file}));
-      const blob=await createStoredZipStable([{path:"deck.json",data:encoder.encode(JSON.stringify(deck,null,2))},{path:"cards.csv",data:encoder.encode(csv)},...media],1);
+      const rename=files.length?confirm("書き出し時にメディア名を 0001.png のような連番へ変更しますか？\n\nOK: 連番に変更して cards.csv の参照も置換\nキャンセル: 元ファイル名のまま書き出し"):false;
+      const nameMap=new Map(files.map((item,index)=>[item.name,rename?mediaName(index,item.file):item.name])),exportCsv=rename?renameMediaReferences(csv,nameMap):csv;
+      const media=files.map(item=>({path:`media/${nameMap.get(item.name)||item.name}`,data:item.file}));
+      const blob=await createStoredZipStable([{path:"deck.json",data:encoder.encode(JSON.stringify(deck,null,2))},{path:"cards.csv",data:encoder.encode(exportCsv)},...media],1);
       setDownload(downloadRecaloopPackage(blob,fileName));
       setMessage(".recaloopを書き出しました。");
     }catch(error){

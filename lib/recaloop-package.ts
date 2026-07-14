@@ -10,6 +10,7 @@ export type RecaloopExportSummary = { title: string; cardCount: number; imageCou
 export type RecaloopImportProgress = { phase: string; cardsDone?: number; cardsTotal?: number; mediaDone?: number; mediaTotal?: number; imageCount?: number; audioCount?: number; elapsedMs?: number };
 export type RecaloopImportResult = { deck: RecaloopDeckMeta; cards: RecaloopCardImport[]; skipped?: boolean; stats: { cardCount: number; imageCount: number; audioCount: number; mediaCount: number; elapsedMs: number; timings: Record<string, number>; mediaSaved: number; mediaSkipped: number } };
 type RecaloopImportOptions = { onProgress?: (progress: RecaloopImportProgress) => void; shouldSkip?: (deck: RecaloopDeckMeta) => boolean };
+type RecaloopExportOptions = { renameMedia?: boolean };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -183,6 +184,12 @@ function parseCsv(text: string) {
   current.push(cell.trim()); if (current.some(Boolean)) rows.push(current);
   return rows;
 }
+export function renameMediaReferences(text: string, names: Map<string, string>) {
+  return text.replace(/\[([^\]]+)\]/g, (all, ref: string) => {
+    const replacement = names.get(displayMediaName(ref));
+    return replacement ? `[${replacement}]` : all;
+  });
+}
 function withRefs(text: string, refs: string[]) {
   return `${text || ""}${refs.map(ref => `[${ref}]`).join("")}`;
 }
@@ -271,7 +278,7 @@ export function recaloopFileName(value: string) {
 function isAudioMedia(fileName: string, mimeType?: string) {
   return Boolean(mimeType?.startsWith("audio/") || fileName.match(/\.(mp3|m4a|wav|ogg)$/i));
 }
-async function collectWordMedia(cards: WordCard[]) {
+async function collectWordMedia(cards: WordCard[], renameMedia = true) {
   const ids = [...new Set(cards.flatMap(card => [...(card.front_media_ids || []), ...(card.back_media_ids || [])]))], mediaNames = new Map<string, string>(), files: ZipInputFile[] = [], missingMedia: string[] = [];
   let imageCount = 0, audioCount = 0;
   console.info("IndexedDBからのデータ取得 start", `${ids.length} media`);
@@ -283,7 +290,7 @@ async function collectWordMedia(cards: WordCard[]) {
       throw formatExportError("indexeddb-read", id, Math.floor(index / 4) + 1, error);
     }
     if (!media) { missingMedia.push(id); continue; }
-    const name = numberedMediaName(index, media.fileName);
+    const name = renameMedia ? numberedMediaName(index, media.fileName) : media.fileName;
     mediaNames.set(id, name);
     if (isAudioMedia(media.fileName, media.mimeType)) audioCount++; else imageCount++;
     files.push({ path: `media/${name}`, data: media.blob, sourceName: media.fileName });
@@ -298,8 +305,8 @@ export function summarizeMaterialDeckPackage(deck: MaterialDeck, nodes: Material
   return { title: deck.title, cardCount: nodes.filter(node => node.node_type === "item").length, imageCount: 0, audioCount: 0, mediaCount: 0, missingMedia: [], fileName: recaloopFileName(deck.title) };
 }
 
-export async function exportWordDeckPackage(list: WordList, cards: WordCard[]) {
-  const { mediaNames, files, missingMedia } = await collectWordMedia(cards);
+export async function exportWordDeckPackage(list: WordList, cards: WordCard[], options: RecaloopExportOptions = {}) {
+  const { mediaNames, files, missingMedia } = await collectWordMedia(cards, options.renameMedia ?? true);
   if (missingMedia.length) throw new Error(`メディア参照切れがあります: ${missingMedia.length}件`);
   const now = new Date().toISOString();
   console.info("deck.json生成 start");
