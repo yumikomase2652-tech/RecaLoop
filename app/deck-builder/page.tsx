@@ -13,12 +13,13 @@ const mediaName=(index:number,file:File)=>`${String(index+1).padStart(4,"0")}${m
 const isAudio=(name:string)=>/\.(mp3|m4a|wav|ogg)$/i.test(name);
 
 export default function DeckBuilderPage(){
-  const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<BuilderMedia[]>([]),[message,setMessage]=useState(""),[exporting,setExporting]=useState(false);
+  const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<BuilderMedia[]>([]),[message,setMessage]=useState(""),[exporting,setExporting]=useState(false),[download,setDownload]=useState<{url:string;fileName:string}|null>(null);
   const mediaNames=useMemo(()=>files.map(item=>item.name),[files]);
   const addFiles=(next:FileList|null)=>{if(!next?.length)return;setFiles(current=>{const existing=new Set(current.map(item=>`${item.file.name}:${item.file.size}`)),added:BuilderMedia[]=[];Array.from(next).forEach(file=>{const key=`${file.name}:${file.size}`;if(existing.has(key))return;existing.add(key);added.push({file,name:mediaName(current.length+added.length,file)})});return[...current,...added]})};
   const insertRef=(name:string)=>setCsv(value=>`${value}${value.endsWith("\n")||!value?"":"\n"},,,,,問題番号,[${name}];`);
   const exportDeck=async()=>{
     setMessage("");
+    setDownload(null);
     if(exporting)return;
     setExporting(true);
     try{
@@ -29,7 +30,7 @@ export default function DeckBuilderPage(){
       if(!fileName)return;
       const media=files.map(item=>({path:`media/${item.name}`,data:item.file}));
       const blob=await createStoredZipStable([{path:"deck.json",data:encoder.encode(JSON.stringify(deck,null,2))},{path:"cards.csv",data:encoder.encode(csv)},...media],1);
-      downloadRecaloopPackage(blob,fileName);
+      setDownload(downloadRecaloopPackage(blob,fileName));
       setMessage(".recaloopを書き出しました。");
     }catch(error){
       console.error("local deck export failed",error);
@@ -70,6 +71,7 @@ export default function DeckBuilderPage(){
             {!mediaNames.length&&<p className="text-sm text-[#718398]">まだメディアがありません。</p>}
           </div>
           {message&&<p className="mt-3 rounded-2xl bg-[#eef5f8] p-3 text-sm font-bold text-[#17334a]">{message}</p>}
+          {download&&<a href={download.url} download={download.fileName} className="mt-3 block rounded-2xl bg-[#17334a] px-4 py-3 text-center text-sm font-black text-white">ダウンロードする</a>}
         </aside>
       </section>
     </div>

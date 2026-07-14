@@ -1,8 +1,9 @@
-import { getLocalMedia, saveLocalMediaBatch, type LocalMediaInput } from "./local-media";
+import { getLocalMedia, saveLocalMedia } from "./local-media";
 import type { MaterialDeck, MaterialNode, WordCard, WordList } from "./types";
 
 type ZipFile = { path: string; data: Uint8Array };
 type ZipInputFile = { path: string; data: Uint8Array | Blob; sourceName?: string };
+type ZipEntry = { path: string; method: number; compressedSize: number; localOffset: number };
 export type RecaloopDeckMeta = { deckId?: string; title: string; description?: string | null; createdAt: string; updatedAt: string; appVersion: string; reviewMode: "default" | "light"; version?: string };
 export type RecaloopCardImport = Pick<WordCard, "card_id" | "front" | "back" | "memo" | "order_index"> & { front_media_ids: string[]; back_media_ids: string[] };
 export type RecaloopExportSummary = { title: string; cardCount: number; imageCount: number; audioCount: number; mediaCount: number; missingMedia: string[]; fileName: string };
@@ -96,6 +97,42 @@ async function inflateRaw(data: Uint8Array) {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
+async function openZipArchive(file: File) {
+  const size = file.size, tailSize = Math.min(size, 65557), tailOffset = size - tailSize;
+  const tail = new Uint8Array(await file.slice(tailOffset).arrayBuffer());
+  const tailView = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
+  let eocd = -1;
+  for (let i = tail.length - 22; i >= 0; i--) {
+    if (tailView.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("ZIPの構成が正しくありません: ZIPの終端情報が見つかりません。");
+  const entriesCount = tailView.getUint16(eocd + 10, true), centralSize = tailView.getUint32(eocd + 12, true), centralOffset = tailView.getUint32(eocd + 16, true);
+  const central = new Uint8Array(await file.slice(centralOffset, centralOffset + centralSize).arrayBuffer());
+  const view = new DataView(central.buffer, central.byteOffset, central.byteLength), entries = new Map<string, ZipEntry>();
+  let offset = 0;
+  for (let index = 0; index < entriesCount; index++) {
+    if (view.getUint32(offset, true) !== 0x02014b50) throw new Error("ZIPの構成が正しくありません: 中央ディレクトリを読めません。");
+    const method = view.getUint16(offset + 10, true), compressedSize = view.getUint32(offset + 20, true), nameLength = view.getUint16(offset + 28, true), extraLength = view.getUint16(offset + 30, true), commentLength = view.getUint16(offset + 32, true), localOffset = view.getUint32(offset + 42, true);
+    const path = decoder.decode(central.slice(offset + 46, offset + 46 + nameLength));
+    offset += 46 + nameLength + extraLength + commentLength;
+    if (!path || path.endsWith("/")) continue;
+    entries.set(path, { path, method, compressedSize, localOffset });
+  }
+  const read = async (path: string) => {
+    const entry = entries.get(path);
+    if (!entry) throw new Error(`ZIPの構成が正しくありません: ${path} が見つかりません。`);
+    const header = new Uint8Array(await file.slice(entry.localOffset, entry.localOffset + 30).arrayBuffer());
+    const headerView = new DataView(header.buffer, header.byteOffset, header.byteLength);
+    if (headerView.getUint32(0, true) !== 0x04034b50) throw new Error(`ZIPの構成が正しくありません: ${path} のデータ位置を読めません。`);
+    const localNameLength = headerView.getUint16(26, true), localExtraLength = headerView.getUint16(28, true), dataStart = entry.localOffset + 30 + localNameLength + localExtraLength;
+    const compressed = new Uint8Array(await file.slice(dataStart, dataStart + entry.compressedSize).arrayBuffer());
+    if (entry.method === 0) return compressed;
+    if (entry.method === 8) return inflateRaw(compressed);
+    throw new Error(`ZIPの構成が正しくありません: ${path} の圧縮方式に対応していません。`);
+  };
+  return { entries, read };
+}
+
 export async function readZip(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer), files = new Map<string, Uint8Array>();
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -172,16 +209,17 @@ function displayMediaName(value: string) {
 function isMediaRef(value: string) {
   return /\.(png|jpe?g|webp|gif|mp3|m4a|wav|ogg)$/i.test(value.trim());
 }
-type MediaEntry = { path: string; fileName: string; data: Uint8Array };
-function parseCardSide(raw: string, deckKey: string, side: "front" | "back", mediaIndex: Map<string, MediaEntry>, mediaQueue: Map<string, { input: LocalMediaInput; side: "front" | "back"; path: string }>) {
+type MediaEntry = { path: string; fileName: string };
+type QueuedMedia = { id: string; fileName: string; path: string; kind: "image" | "audio"; mimeType: string };
+function parseCardSide(raw: string, deckKey: string, side: "front" | "back", mediaIndex: Map<string, MediaEntry>, mediaQueue: Map<string, QueuedMedia>) {
   const ids: string[] = [], refs: string[] = [];
   let text = cleanCell(raw);
   refs.push(...[...text.matchAll(/\[([^\]]+)\]/g)].map(match => match[1]).filter(isMediaRef));
   for (const ref of refs) {
     const fileName = displayMediaName(ref), matched = mediaIndex.get(normalizeMediaName(ref));
     if (!matched) throw new Error(`media/${fileName} が見つかりません。`);
-    const id = mediaId(deckKey, fileName), blob = new Blob([matched.data as unknown as BlobPart], { type: mimeFromName(matched.fileName) });
-    if (!mediaQueue.has(id)) mediaQueue.set(id, { input: { id, fileName: matched.fileName, mimeType: blob.type || "application/octet-stream", kind: isAudioMedia(matched.fileName, blob.type) ? "audio" : "image", size: blob.size, blob }, side, path: matched.path });
+    const id = mediaId(deckKey, fileName), mimeType = mimeFromName(matched.fileName);
+    if (!mediaQueue.has(id)) mediaQueue.set(id, { id, fileName: matched.fileName, path: matched.path, mimeType, kind: isAudioMedia(matched.fileName, mimeType) ? "audio" : "image" });
     ids.push(id);
   }
   text = cleanCell(text.replace(/\[([^\]]+)\]/g, (_, ref: string) => isMediaRef(ref) ? "" : `[${ref}]`));
@@ -310,14 +348,15 @@ function logTiming(timings: Record<string, number>, label: string, started: numb
 export async function importWordDeckPackage(file: File, options: RecaloopImportOptions = {}): Promise<RecaloopImportResult> {
   const totalStart = performance.now(), timings: Record<string, number> = {};
   let started = performance.now();
-  const files = await readZip(await file.arrayBuffer());
+  const archive = await openZipArchive(file);
   logTiming(timings, "ZIP解凍", started);
-  const deckRaw = files.get("deck.json"), cardsRaw = files.get("cards.csv") || files.get("cards.json");
-  if (!deckRaw) throw new Error("ZIPの構成が正しくありません: deck.json が見つかりません。");
-  if (!cardsRaw) throw new Error("ZIPの構成が正しくありません: cards.csv が見つかりません。");
+  const deckEntry = archive.entries.get("deck.json"), cardsEntry = archive.entries.get("cards.csv") || archive.entries.get("cards.json");
+  if (!deckEntry) throw new Error("ZIPの構成が正しくありません: deck.json が見つかりません。");
+  if (!cardsEntry) throw new Error("ZIPの構成が正しくありません: cards.csv が見つかりません。");
   let deck: RecaloopDeckMeta;
   started = performance.now();
   try {
+    const deckRaw = await archive.read(deckEntry.path);
     deck = JSON.parse(decoder.decode(deckRaw)) as RecaloopDeckMeta;
   } catch {
     throw new Error("ZIPの構成が正しくありません: deck.json を読み込めません。");
@@ -333,21 +372,23 @@ export async function importWordDeckPackage(file: File, options: RecaloopImportO
   }
   started = performance.now();
   const mediaIndex = new Map<string, MediaEntry>();
-  for (const [path, data] of files.entries()) {
+  for (const path of archive.entries.keys()) {
     const match = path.match(/^media\/(.+)$/i);
     if (!match) continue;
     const fileName = displayMediaName(match[1]);
-    mediaIndex.set(normalizeMediaName(fileName), { path, fileName, data });
+    mediaIndex.set(normalizeMediaName(fileName), { path, fileName });
   }
   logTiming(timings, "media一覧作成", started);
   started = performance.now();
+  const cardsRaw = await archive.read(cardsEntry.path);
   const decoded = decoder.decode(cardsRaw);
   logTiming(timings, "cards.csv 読み込み", started);
-  const cards = files.has("cards.json")
+  const isCardsJson = cardsEntry.path.endsWith(".json");
+  const cards = isCardsJson
     ? (JSON.parse(decoded) as RecaloopCardImport[])
     : [];
-  const mediaQueue = new Map<string, { input: LocalMediaInput; side: "front" | "back"; path: string }>();
-  if (!files.has("cards.json")) {
+  const mediaQueue = new Map<string, QueuedMedia>();
+  if (!isCardsJson) {
     started = performance.now();
     const rows = parseCsv(decoded);
     logTiming(timings, "CSV解析", started);
@@ -362,27 +403,39 @@ export async function importWordDeckPackage(file: File, options: RecaloopImportO
     }
     logTiming(timings, "カード生成", started);
   }
-  const mediaInputs = [...mediaQueue.values()].map(item => item.input), imageCount = mediaInputs.filter(item => item.kind === "image").length, audioCount = mediaInputs.filter(item => item.kind === "audio").length;
+  const mediaItems = [...mediaQueue.values()], imageCount = mediaItems.filter(item => item.kind === "image").length, audioCount = mediaItems.filter(item => item.kind === "audio").length;
   mediaQueue.clear();
   mediaIndex.clear();
-  files.clear();
   started = performance.now();
-  const mediaResult = await saveLocalMediaBatch(mediaInputs, 4, (done, total) => options.onProgress?.({ phase: "メディア保存", mediaDone: done, mediaTotal: total, imageCount, audioCount, cardsDone: cards.length, cardsTotal: cards.length }));
+  let saved = 0, skipped = 0, done = 0;
+  for (const item of mediaItems) {
+    if (await getLocalMedia(item.id)) {
+      skipped++;
+    } else {
+      const bytes = await archive.read(item.path), blob = new Blob([bytes as unknown as BlobPart], { type: item.mimeType });
+      await saveLocalMedia(blob, item.fileName, item.id);
+      saved++;
+    }
+    done++;
+    options.onProgress?.({ phase: "メディア保存", mediaDone: done, mediaTotal: mediaItems.length, imageCount, audioCount, cardsDone: cards.length, cardsTotal: cards.length });
+    await new Promise(resolve => setTimeout(resolve, 0));
+  }
   logTiming(timings, "画像保存", started);
   const elapsedMs = Math.round(performance.now() - totalStart);
   console.info(`インポート合計 ${elapsedMs}ms`);
-  options.onProgress?.({ phase: "解析完了", cardsDone: cards.length, cardsTotal: cards.length, mediaDone: mediaInputs.length, mediaTotal: mediaInputs.length, imageCount, audioCount, elapsedMs });
-  return { deck, cards, stats: { cardCount: cards.length, imageCount, audioCount, mediaCount: mediaInputs.length, elapsedMs, timings, mediaSaved: mediaResult.saved, mediaSkipped: mediaResult.skipped } };
+  options.onProgress?.({ phase: "解析完了", cardsDone: cards.length, cardsTotal: cards.length, mediaDone: mediaItems.length, mediaTotal: mediaItems.length, imageCount, audioCount, elapsedMs });
+  return { deck, cards, stats: { cardCount: cards.length, imageCount, audioCount, mediaCount: mediaItems.length, elapsedMs, timings, mediaSaved: saved, mediaSkipped: skipped } };
 }
 
 export function downloadRecaloopPackage(blob: Blob, title: string) {
   console.info("ダウンロード処理 start");
-  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  const url = URL.createObjectURL(blob), fileName = recaloopFileName(title || "deck"), a = document.createElement("a");
   a.href = url;
-  a.download = recaloopFileName(title || "deck");
+  a.download = fileName;
   a.style.display = "none";
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+  setTimeout(() => URL.revokeObjectURL(url), 300000);
+  return { url, fileName };
 }
