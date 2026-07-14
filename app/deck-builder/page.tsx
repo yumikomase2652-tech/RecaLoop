@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo,useState } from "react";
-import { createStoredZip,downloadRecaloopPackage,recaloopFileName } from "@/lib/recaloop-package";
+import { createStoredZipStable,downloadRecaloopPackage,recaloopFileName } from "@/lib/recaloop-package";
 
 const encoder = new TextEncoder();
 const sampleCsv = `Ⅰ,第1章 数と式,,,,1,[0001.png];
@@ -13,33 +13,40 @@ const mediaName=(index:number,file:File)=>`${String(index+1).padStart(4,"0")}${m
 const isAudio=(name:string)=>/\.(mp3|m4a|wav|ogg)$/i.test(name);
 
 export default function DeckBuilderPage(){
-  const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<BuilderMedia[]>([]),[message,setMessage]=useState("");
+  const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<BuilderMedia[]>([]),[message,setMessage]=useState(""),[exporting,setExporting]=useState(false);
   const mediaNames=useMemo(()=>files.map(item=>item.name),[files]);
   const addFiles=(next:FileList|null)=>{if(!next?.length)return;setFiles(current=>{const existing=new Set(current.map(item=>`${item.file.name}:${item.file.size}`)),added:BuilderMedia[]=[];Array.from(next).forEach(file=>{const key=`${file.name}:${file.size}`;if(existing.has(key))return;existing.add(key);added.push({file,name:mediaName(current.length+added.length,file)})});return[...current,...added]})};
   const insertRef=(name:string)=>setCsv(value=>`${value}${value.endsWith("\n")||!value?"":"\n"},,,,,問題番号,[${name}];`);
   const exportDeck=async()=>{
     setMessage("");
+    if(exporting)return;
+    setExporting(true);
     try{
-      const deckId=`deck_${crypto.randomUUID()}`,now=new Date().toISOString();
-      const deck={deckId,title:title.trim()||"RecaLoopデッキ",description:description.trim()||null,createdAt:now,updatedAt:now,appVersion:"recaloop-web",reviewMode:"default",version:"1.0.0"};
+      const now=new Date().toISOString();
+      const deck={title:title.trim()||"RecaLoopデッキ",description:description.trim()||null,createdAt:now,updatedAt:now,appVersion:"recaloop-web",reviewMode:"default",version:"1.0.0"};
       const cardCount=csv.split(/\r?\n/).filter(line=>line.trim()).length,imageCount=files.filter(item=>!isAudio(item.name)).length,audioCount=files.filter(item=>isAudio(item.name)).length;
       const fileName=prompt(`「${deck.title}」を書き出します\n\nカード：${cardCount}枚\n画像：${imageCount}件\n音声：${audioCount}件\n合計メディア：${files.length}件\n\nファイル名を確認してください。`,recaloopFileName(deck.title));
       if(!fileName)return;
-      const media=await Promise.all(files.map(async item=>({path:`media/${item.name}`,data:new Uint8Array(await item.file.arrayBuffer())})));
-      const blob=createStoredZip([{path:"deck.json",data:encoder.encode(JSON.stringify(deck,null,2))},{path:"cards.csv",data:encoder.encode(csv)},...media]);
+      const media=files.map(item=>({path:`media/${item.name}`,data:item.file}));
+      const blob=await createStoredZipStable([{path:"deck.json",data:encoder.encode(JSON.stringify(deck,null,2))},{path:"cards.csv",data:encoder.encode(csv)},...media],4);
       downloadRecaloopPackage(blob,fileName);
       setMessage(".recaloopを書き出しました。");
     }catch(error){
       console.error("local deck export failed",error);
       setMessage(error instanceof Error?error.message:".recaloopの書き出しに失敗しました。");
+    }finally{
+      setExporting(false);
     }
   };
   return <main className="min-h-screen bg-[#f4f7f8] p-4 md:p-8">
     <div className="mx-auto max-w-5xl">
-      <header className="mb-6">
-        <p className="text-xs font-bold text-[#607482]">ローカル専用・ログイン不要</p>
-        <h1 className="text-3xl font-black text-[#172f42]">RecaLoop デッキ作成</h1>
-        <p className="mt-2 text-sm text-[#607482]">CSVと画像・音声をまとめて、通常のZIP形式の .recaloop ファイルを書き出します。</p>
+      <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs font-bold text-[#607482]">ローカル専用・ログイン不要</p>
+          <h1 className="text-3xl font-black text-[#172f42]">RecaLoop デッキ作成</h1>
+          <p className="mt-2 text-sm text-[#607482]">CSVと画像・音声をまとめて、通常のZIP形式の .recaloop ファイルを書き出します。</p>
+        </div>
+        <button onClick={exportDeck} disabled={exporting} className="w-full rounded-2xl bg-[#17334a] px-5 py-3 text-sm font-black text-white disabled:opacity-60 md:w-auto">{exporting?"書き出し中...":".recaloopを書き出す"}</button>
       </header>
       <section className="grid gap-4 md:grid-cols-[1fr_320px]">
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-[#dbe5ea]">
@@ -62,7 +69,6 @@ export default function DeckBuilderPage(){
             {mediaNames.map(name=><div key={name} className="flex items-center justify-between gap-2 rounded-2xl bg-[#f7fafb] px-3 py-2 text-xs"><span className="min-w-0 truncate font-bold text-[#172f42]">{name}</span><button className="shrink-0 rounded-full bg-[#17334a] px-3 py-1 font-bold text-white" onClick={()=>insertRef(name)}>[ ] 挿入</button></div>)}
             {!mediaNames.length&&<p className="text-sm text-[#718398]">まだメディアがありません。</p>}
           </div>
-          <button onClick={exportDeck} className="mt-5 w-full rounded-2xl bg-[#17334a] px-4 py-3 text-sm font-black text-white">.recaloopを書き出す</button>
           {message&&<p className="mt-3 rounded-2xl bg-[#eef5f8] p-3 text-sm font-bold text-[#17334a]">{message}</p>}
         </aside>
       </section>
