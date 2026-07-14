@@ -195,9 +195,10 @@ function splitCardContent(content: string) {
   return index < 0 ? [content, ""] as const : [content.slice(0, index), content.slice(index + 1)] as const;
 }
 function parseRecaloopCsvRow(row: string[], index: number) {
-  const content = row.at(-1) || "";
-  const problemNumber = cleanCell(row.at(-2) || "");
-  const hierarchy = row.slice(0, -2).map(cleanCell).filter(Boolean);
+  const last = row.at(-1) || "", hasContent = last.includes(";");
+  const content = hasContent ? last : "";
+  const problemNumber = cleanCell(hasContent ? row.at(-2) || "" : last);
+  const hierarchy = (hasContent ? row.slice(0, -2) : row.slice(0, -1)).map(cleanCell).filter(Boolean);
   const explicitCardId = problemNumber || null;
   const [frontRaw, backRaw] = splitCardContent(content);
   return { content, hierarchy, problemNumber, explicitCardId, frontRaw, backRaw, rowNumber: index + 1 };
