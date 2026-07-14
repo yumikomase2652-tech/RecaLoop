@@ -9,6 +9,7 @@ export interface LocalMediaRecord {
   createdAt: string;
   blob: Blob;
 }
+export type LocalMediaInput = Omit<LocalMediaRecord, "createdAt"> & { createdAt?: string };
 
 const dbName = "recaloop-local-media";
 const storeName = "media";
@@ -55,6 +56,51 @@ export async function saveLocalMedia(file: File | Blob, fileName?: string, prefe
   };
   await withStore("readwrite", store => store.put(record));
   return record;
+}
+
+export async function saveLocalMediaBatch(inputs: LocalMediaInput[], batchSize = 24, progress?: (done: number, total: number) => void) {
+  let saved = 0, skipped = 0, done = 0;
+  for (let start = 0; start < inputs.length; start += batchSize) {
+    const chunk = inputs.slice(start, start + batchSize);
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(storeName, "readwrite");
+      const store = tx.objectStore(storeName);
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+      tx.onerror = () => {
+        db.close();
+        reject(tx.error);
+      };
+      chunk.forEach(input => {
+        const record: LocalMediaRecord = {
+          ...input,
+          createdAt: input.createdAt || new Date().toISOString(),
+        };
+        const get = store.get(record.id);
+        get.onerror = () => reject(get.error);
+        get.onsuccess = () => {
+          if (get.result) {
+            skipped++;
+            done++;
+            progress?.(done, inputs.length);
+            return;
+          }
+          const put = store.put(record);
+          put.onerror = () => reject(put.error);
+          put.onsuccess = () => {
+            saved++;
+            done++;
+            progress?.(done, inputs.length);
+          };
+        };
+      });
+    });
+    await new Promise(resolve => setTimeout(resolve, 0));
+  }
+  return { saved, skipped, total: inputs.length };
 }
 
 export async function getLocalMedia(id: string) {

@@ -4,9 +4,9 @@ import { useMemo,useState } from "react";
 import { createStoredZip,downloadRecaloopPackage,recaloopFileName } from "@/lib/recaloop-package";
 
 const encoder = new TextEncoder();
-const sampleCsv = `数学,第1章,1,,,,[0001.png];
-数学,第1章,2,,,,問題[0002.png];答えは4
-英語,単語,1,,,,[front.png];[back.png]`;
+const sampleCsv = `Ⅰ,第1章 数と式,,,,1,[0001.png];
+Ⅰ,第1章 数と式,,,,2,問題[0002.png];答えは4
+英語,単語,,,,A-12,[front.png];[back.png]`;
 type BuilderMedia={file:File;name:string};
 const mediaExt=(name:string)=>name.match(/\.[a-z0-9]+$/i)?.[0].toLowerCase()||".bin";
 const mediaName=(index:number,file:File)=>`${String(index+1).padStart(4,"0")}${mediaExt(file.name)}`;
@@ -16,12 +16,12 @@ export default function DeckBuilderPage(){
   const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<BuilderMedia[]>([]),[message,setMessage]=useState("");
   const mediaNames=useMemo(()=>files.map(item=>item.name),[files]);
   const addFiles=(next:FileList|null)=>{if(!next?.length)return;setFiles(current=>{const existing=new Set(current.map(item=>`${item.file.name}:${item.file.size}`)),added:BuilderMedia[]=[];Array.from(next).forEach(file=>{const key=`${file.name}:${file.size}`;if(existing.has(key))return;existing.add(key);added.push({file,name:mediaName(current.length+added.length,file)})});return[...current,...added]})};
-  const insertRef=(name:string)=>setCsv(value=>`${value}${value.endsWith("\n")||!value?"":"\n"},,,,,,[${name}];`);
+  const insertRef=(name:string)=>setCsv(value=>`${value}${value.endsWith("\n")||!value?"":"\n"},,,,,問題番号,[${name}];`);
   const exportDeck=async()=>{
     setMessage("");
     try{
       const deckId=`deck_${crypto.randomUUID()}`,now=new Date().toISOString();
-      const deck={deckId,title:title.trim()||"RecaLoopデッキ",description:description.trim()||null,createdAt:now,updatedAt:now,appVersion:"recaloop-web",reviewMode:"default"};
+      const deck={deckId,title:title.trim()||"RecaLoopデッキ",description:description.trim()||null,createdAt:now,updatedAt:now,appVersion:"recaloop-web",reviewMode:"default",version:"1.0.0"};
       const cardCount=csv.split(/\r?\n/).filter(line=>line.trim()).length,imageCount=files.filter(item=>!isAudio(item.name)).length,audioCount=files.filter(item=>isAudio(item.name)).length;
       const fileName=prompt(`「${deck.title}」を書き出します\n\nカード：${cardCount}枚\n画像：${imageCount}件\n音声：${audioCount}件\n合計メディア：${files.length}件\n\nファイル名を確認してください。`,recaloopFileName(deck.title));
       if(!fileName)return;

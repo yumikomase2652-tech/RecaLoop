@@ -1,10 +1,13 @@
-import { getLocalMedia, saveLocalMedia } from "./local-media";
+import { getLocalMedia, saveLocalMediaBatch, type LocalMediaInput } from "./local-media";
 import type { MaterialDeck, MaterialNode, WordCard, WordList } from "./types";
 
 type ZipFile = { path: string; data: Uint8Array };
-export type RecaloopDeckMeta = { deckId: string; title: string; description?: string | null; createdAt: string; updatedAt: string; appVersion: string; reviewMode: "default" | "light" };
+export type RecaloopDeckMeta = { deckId: string; title: string; description?: string | null; createdAt: string; updatedAt: string; appVersion: string; reviewMode: "default" | "light"; version?: string };
 export type RecaloopCardImport = Pick<WordCard, "card_id" | "front" | "back" | "memo" | "order_index"> & { front_media_ids: string[]; back_media_ids: string[] };
 export type RecaloopExportSummary = { title: string; cardCount: number; imageCount: number; audioCount: number; mediaCount: number; missingMedia: string[]; fileName: string };
+export type RecaloopImportProgress = { phase: string; cardsDone?: number; cardsTotal?: number; mediaDone?: number; mediaTotal?: number; imageCount?: number; audioCount?: number; elapsedMs?: number };
+export type RecaloopImportResult = { deck: RecaloopDeckMeta; cards: RecaloopCardImport[]; skipped?: boolean; stats: { cardCount: number; imageCount: number; audioCount: number; mediaCount: number; elapsedMs: number; timings: Record<string, number>; mediaSaved: number; mediaSkipped: number } };
+type RecaloopImportOptions = { onProgress?: (progress: RecaloopImportProgress) => void; shouldSkip?: (deck: RecaloopDeckMeta) => boolean };
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -110,18 +113,18 @@ function isMediaRef(value: string) {
   return /\.(png|jpe?g|webp|gif|mp3|m4a|wav|ogg)$/i.test(value.trim());
 }
 type MediaEntry = { path: string; fileName: string; data: Uint8Array };
-async function parseCardSide(raw: string, deckId: string, side: "front" | "back", mediaIndex: Map<string, MediaEntry>) {
-  const ids: string[] = [];
+function parseCardSide(raw: string, deckId: string, side: "front" | "back", mediaIndex: Map<string, MediaEntry>, mediaQueue: Map<string, { input: LocalMediaInput; side: "front" | "back"; path: string }>) {
+  const ids: string[] = [], refs: string[] = [];
   let text = cleanCell(raw);
-  const refs = [...text.matchAll(/\[([^\]]+)\]/g)].map(match => match[1]).filter(isMediaRef);
+  refs.push(...[...text.matchAll(/\[([^\]]+)\]/g)].map(match => match[1]).filter(isMediaRef));
   for (const ref of refs) {
     const fileName = displayMediaName(ref), matched = mediaIndex.get(normalizeMediaName(ref));
     console.info("Detected media reference:", fileName);
     if (!matched) throw new Error(`media/${fileName} が見つかりません。`);
-    const id = mediaId(deckId, fileName), body = matched.data.buffer.slice(matched.data.byteOffset, matched.data.byteOffset + matched.data.byteLength) as ArrayBuffer;
-    await saveLocalMedia(new Blob([body], { type: mimeFromName(matched.fileName) }), matched.fileName, id);
+    const id = mediaId(deckId, fileName), body = matched.data.buffer.slice(matched.data.byteOffset, matched.data.byteOffset + matched.data.byteLength) as ArrayBuffer, blob = new Blob([body], { type: mimeFromName(matched.fileName) });
+    if (!mediaQueue.has(id)) mediaQueue.set(id, { input: { id, fileName: matched.fileName, mimeType: blob.type || "application/octet-stream", kind: isAudioMedia(matched.fileName, blob.type) ? "audio" : "image", size: blob.size, blob }, side, path: matched.path });
     console.info("Matched ZIP entry:", matched.path);
-    console.info("Stored mediaId:", id);
+    console.info("Queued mediaId:", id);
     console.info("Attached to:", side);
     ids.push(id);
   }
@@ -134,12 +137,11 @@ function splitCardContent(content: string) {
 }
 function parseRecaloopCsvRow(row: string[], index: number) {
   const content = row.at(-1) || "";
-  const cellsBeforeContent = row.slice(0, -1).map(cell => cleanCell(cell));
-  const hasExplicitCardId = row.length >= 8 && Boolean(cleanCell(row[row.length - 2]));
-  const explicitCardId = hasExplicitCardId ? cleanCell(row[row.length - 2]) : null;
-  const hierarchy = (hasExplicitCardId ? cellsBeforeContent.slice(0, -1) : cellsBeforeContent).map(cleanCell).filter(Boolean);
+  const problemNumber = cleanCell(row.at(-2) || "");
+  const hierarchy = row.slice(0, -2).map(cleanCell).filter(Boolean);
+  const explicitCardId = problemNumber || null;
   const [frontRaw, backRaw] = splitCardContent(content);
-  return { content, hierarchy, explicitCardId, frontRaw, backRaw, rowNumber: index + 1 };
+  return { content, hierarchy, problemNumber, explicitCardId, frontRaw, backRaw, rowNumber: index + 1 };
 }
 function hashString(value: string) {
   let hash = 2166136261;
@@ -197,13 +199,12 @@ export async function exportWordDeckPackage(list: WordList, cards: WordCard[]) {
   const { mediaNames, files, missingMedia } = await collectWordMedia(cards);
   if (missingMedia.length) throw new Error(`メディア参照切れがあります: ${missingMedia.length}件`);
   const now = new Date().toISOString();
-  const deck: RecaloopDeckMeta = { deckId, title: list.title, description: list.description || null, createdAt: list.created_at || now, updatedAt: list.updated_at || now, appVersion: "recaloop-web", reviewMode: list.review_mode || "default" };
+  const deck: RecaloopDeckMeta = { deckId, title: list.title, description: list.description || null, createdAt: list.created_at || now, updatedAt: list.updated_at || now, appVersion: "recaloop-web", reviewMode: list.review_mode || "default", version: list.updated_at || now };
   const csvRows = cards.sort((a, b) => a.order_index - b.order_index).map((card, index) => {
     const frontRefs = (card.front_media_ids || []).map(id => mediaNames.get(id)).filter(Boolean) as string[];
     const backRefs = (card.back_media_ids || []).map(id => mediaNames.get(id)).filter(Boolean) as string[];
     const problemNumber = card.card_id || String(index + 1).padStart(4, "0");
-    const cardId = stableCardId(deckId, card.card_id, `${card.id}:${index}:${card.front}:${card.back}`);
-    return [list.title, "カード", "", "", "", problemNumber, cardId, `${withRefs(card.front, frontRefs)};${withRefs(card.back, backRefs)}`].map(csvCell).join(",");
+    return [list.title, "カード", "", "", "", problemNumber, `${withRefs(card.front, frontRefs)};${withRefs(card.back, backRefs)}`].map(csvCell).join(",");
   });
   return createStoredZip([{ path: "deck.json", data: encoder.encode(JSON.stringify(deck, null, 2)) }, { path: "cards.csv", data: encoder.encode(csvRows.join("\n")) }, ...files]);
 }
@@ -211,7 +212,7 @@ export async function exportWordDeckPackage(list: WordList, cards: WordCard[]) {
 export async function exportMaterialDeckPackage(deck: MaterialDeck, nodes: MaterialNode[]) {
   const deckId = deck.external_deck_id || deck.source_content_id || deck.id;
   const now = new Date().toISOString();
-  const meta: RecaloopDeckMeta = { deckId, title: deck.title, description: deck.description || null, createdAt: deck.created_at || now, updatedAt: deck.updated_at || now, appVersion: "recaloop-web", reviewMode: deck.review_mode || "default" };
+  const meta: RecaloopDeckMeta = { deckId, title: deck.title, description: deck.description || null, createdAt: deck.created_at || now, updatedAt: deck.updated_at || now, appVersion: "recaloop-web", reviewMode: deck.review_mode || "default", version: deck.updated_at || now };
   const byId = new Map(nodes.map(node => [node.id, node]));
   const pathFor = (node: MaterialNode) => {
     const titles: string[] = [];
@@ -228,9 +229,9 @@ export async function exportMaterialDeckPackage(deck: MaterialDeck, nodes: Mater
     .filter(node => node.node_type === "item")
     .sort((a, b) => a.order_index - b.order_index)
     .map(node => {
-      const hierarchy = [...pathFor(node), node.title].slice(0, 6);
-      while (hierarchy.length < 6) hierarchy.push("");
-      return [...hierarchy, stableCardId(deckId, node.id, `${node.title}:${node.order_index}`), node.memo || node.title].map(csvCell).join(",");
+      const hierarchy = pathFor(node).slice(0, 5);
+      while (hierarchy.length < 5) hierarchy.push("");
+      return [...hierarchy, node.title, node.memo || ""].map(csvCell).join(",");
     });
   return createStoredZip([
     { path: "deck.json", data: encoder.encode(JSON.stringify(meta, null, 2)) },
@@ -238,17 +239,37 @@ export async function exportMaterialDeckPackage(deck: MaterialDeck, nodes: Mater
   ]);
 }
 
-export async function importWordDeckPackage(file: File) {
-  const files = await readZip(await file.arrayBuffer()), deckRaw = files.get("deck.json"), cardsRaw = files.get("cards.csv") || files.get("cards.json");
+function logTiming(timings: Record<string, number>, label: string, started: number) {
+  const elapsed = Math.round(performance.now() - started);
+  timings[label] = elapsed;
+  console.info(`${label} ${elapsed}ms`);
+}
+
+export async function importWordDeckPackage(file: File, options: RecaloopImportOptions = {}): Promise<RecaloopImportResult> {
+  const totalStart = performance.now(), timings: Record<string, number> = {};
+  let started = performance.now();
+  const files = await readZip(await file.arrayBuffer());
+  logTiming(timings, "ZIP解凍", started);
+  const deckRaw = files.get("deck.json"), cardsRaw = files.get("cards.csv") || files.get("cards.json");
   if (!deckRaw) throw new Error("ZIPの構成が正しくありません: deck.json が見つかりません。");
   if (!cardsRaw) throw new Error("ZIPの構成が正しくありません: cards.csv が見つかりません。");
   let deck: RecaloopDeckMeta;
+  started = performance.now();
   try {
     deck = JSON.parse(decoder.decode(deckRaw)) as RecaloopDeckMeta;
   } catch {
     throw new Error("ZIPの構成が正しくありません: deck.json を読み込めません。");
   }
+  logTiming(timings, "deck.json 読み込み", started);
   if (!deck.deckId) throw new Error("ZIPの構成が正しくありません: deck.json に deckId がありません。");
+  deck.version ||= deck.updatedAt || "1.0.0";
+  if (options.shouldSkip?.(deck)) {
+    const elapsedMs = Math.round(performance.now() - totalStart);
+    console.info(`インポート合計 ${elapsedMs}ms`);
+    options.onProgress?.({ phase: "既に最新", cardsDone: 0, cardsTotal: 0, mediaDone: 0, mediaTotal: 0, elapsedMs });
+    return { deck, cards: [], skipped: true, stats: { cardCount: 0, imageCount: 0, audioCount: 0, mediaCount: 0, elapsedMs, timings, mediaSaved: 0, mediaSkipped: 0 } };
+  }
+  started = performance.now();
   const mediaIndex = new Map<string, MediaEntry>();
   for (const [path, data] of files.entries()) {
     const match = path.match(/^media\/(.+)$/i);
@@ -256,13 +277,21 @@ export async function importWordDeckPackage(file: File) {
     const fileName = displayMediaName(match[1]);
     mediaIndex.set(normalizeMediaName(fileName), { path, fileName, data });
   }
+  logTiming(timings, "media一覧作成", started);
+  started = performance.now();
   const decoded = decoder.decode(cardsRaw);
+  logTiming(timings, "cards.csv 読み込み", started);
   const cards = files.has("cards.json")
     ? (JSON.parse(decoded) as RecaloopCardImport[])
     : [];
+  const mediaQueue = new Map<string, { input: LocalMediaInput; side: "front" | "back"; path: string }>();
   if (!files.has("cards.json")) {
-    for (const [index, row] of parseCsv(decoded).entries()) {
-      const parsed = parseRecaloopCsvRow(row, index), front = await parseCardSide(parsed.frontRaw || "", deck.deckId, "front", mediaIndex), back = await parseCardSide(parsed.backRaw || "", deck.deckId, "back", mediaIndex), fingerprint = `${parsed.hierarchy.join("/")}:${front.text}:${back.text}:${index}`;
+    started = performance.now();
+    const rows = parseCsv(decoded);
+    logTiming(timings, "CSV解析", started);
+    started = performance.now();
+    for (const [index, row] of rows.entries()) {
+      const parsed = parseRecaloopCsvRow(row, index), front = parseCardSide(parsed.frontRaw || "", deck.deckId, "front", mediaIndex, mediaQueue), back = parseCardSide(parsed.backRaw || "", deck.deckId, "back", mediaIndex, mediaQueue), fingerprint = `${parsed.hierarchy.join("/")}:${parsed.problemNumber}:${front.text}:${back.text}:${index}`;
       console.info("Parsed hierarchy:", parsed.hierarchy.join(" / "));
       console.info("Parsed frontText:", front.text);
       console.info("Parsed backText:", back.text);
@@ -270,9 +299,21 @@ export async function importWordDeckPackage(file: File) {
       console.info("Parsed back media:", back.ids.length);
       console.info("Has back side:", Boolean(back.text || back.ids.length));
       cards.push({ card_id: stableCardId(deck.deckId, parsed.explicitCardId, fingerprint), front: front.text, back: back.text, memo: parsed.hierarchy.join(" / ") || null, order_index: index, front_media_ids: front.ids, back_media_ids: back.ids });
+      if (index % 100 === 0) {
+        options.onProgress?.({ phase: "カード解析", cardsDone: index + 1, cardsTotal: rows.length });
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
     }
+    logTiming(timings, "カード生成", started);
   }
-  return { deck, cards };
+  const mediaInputs = [...mediaQueue.values()].map(item => item.input), imageCount = mediaInputs.filter(item => item.kind === "image").length, audioCount = mediaInputs.filter(item => item.kind === "audio").length;
+  started = performance.now();
+  const mediaResult = await saveLocalMediaBatch(mediaInputs, 24, (done, total) => options.onProgress?.({ phase: "メディア保存", mediaDone: done, mediaTotal: total, imageCount, audioCount, cardsDone: cards.length, cardsTotal: cards.length }));
+  logTiming(timings, "画像保存", started);
+  const elapsedMs = Math.round(performance.now() - totalStart);
+  console.info(`インポート合計 ${elapsedMs}ms`);
+  options.onProgress?.({ phase: "解析完了", cardsDone: cards.length, cardsTotal: cards.length, mediaDone: mediaInputs.length, mediaTotal: mediaInputs.length, imageCount, audioCount, elapsedMs });
+  return { deck, cards, stats: { cardCount: cards.length, imageCount, audioCount, mediaCount: mediaInputs.length, elapsedMs, timings, mediaSaved: mediaResult.saved, mediaSkipped: mediaResult.skipped } };
 }
 
 export function downloadRecaloopPackage(blob: Blob, title: string) {
