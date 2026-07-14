@@ -185,21 +185,22 @@ function cleanCell(value: string | null | undefined) {
   const text = (value || "").trim();
   return /^(none|null|undefined)$/i.test(text) ? "" : text.replace(/[;:](none|null|undefined)$/i, "").trim();
 }
-function normalizeMediaName(value: string) {
+function mediaBasename(value: string) {
   const trimmed = value.trim().replace(/\\/g, "/").replace(/^\.?\//, "").replace(/^media\//i, "");
+  let decoded = trimmed;
   try {
-    return decodeURIComponent(trimmed).normalize("NFC").toLowerCase();
+    decoded = decodeURIComponent(trimmed).normalize("NFC");
   } catch {
-    return trimmed.normalize("NFC").toLowerCase();
+    decoded = trimmed.normalize("NFC");
   }
+  const parts = decoded.split("/").filter(Boolean);
+  return parts.at(-1) || decoded;
+}
+function normalizeMediaName(value: string) {
+  return mediaBasename(value).toLowerCase();
 }
 function displayMediaName(value: string) {
-  const trimmed = value.trim().replace(/\\/g, "/").replace(/^\.?\//, "").replace(/^media\//i, "");
-  try {
-    return decodeURIComponent(trimmed).normalize("NFC");
-  } catch {
-    return trimmed.normalize("NFC");
-  }
+  return mediaBasename(value);
 }
 function isMediaRef(value: string) {
   return /\.(png|jpe?g|webp|gif|mp3|m4a|wav|ogg)$/i.test(value.trim());
