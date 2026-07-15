@@ -60,12 +60,14 @@ function MaterialItem({node,data,setData,history,study,save,selectMode=false,sel
 async function importRecaloopDeck(file:File,data:AppData,setData:(d:AppData)=>void,flash:(s:string)=>void,onProgress?:(progress:RecaloopImportProgress)=>void){
  const ownerId=data.profile?.id;
  if(!ownerId)throw new Error("ログイン中のユーザー情報を取得できません。");
- const imported=await importWordDeckPackage(file,{onProgress,shouldSkip:deck=>data.wordLists.some(l=>l.user_id===ownerId&&!l.deleted_at&&normalizeDeckTitle(l.title)===normalizeDeckTitle(deck.title||"読み込みデッキ")&&l.external_version===(deck.version||deck.updatedAt||"1.0.0"))}),version=imported.deck.version||imported.deck.updatedAt||"1.0.0",title=imported.deck.title||"読み込みデッキ";
+ const imported=await importWordDeckPackage(file,{onProgress,shouldSkip:deck=>{const splitPart=/\bpart\s+\d+\/\d+\b/i.test(deck.description||"");return !splitPart&&data.wordLists.some(l=>l.user_id===ownerId&&!l.deleted_at&&normalizeDeckTitle(l.title)===normalizeDeckTitle(deck.title||"読み込みデッキ")&&l.external_version===(deck.version||deck.updatedAt||"1.0.0"))}}),version=imported.deck.version||imported.deck.updatedAt||"1.0.0",title=imported.deck.title||"読み込みデッキ",splitPart=/\bpart\s+\d+\/\d+\b/i.test(imported.deck.description||"");
  const latest=data.wordLists.find(l=>l.user_id===ownerId&&!l.deleted_at&&normalizeDeckTitle(l.title)===normalizeDeckTitle(title)&&l.external_version===version);
  if(latest){flash(`「${latest.title}」は既に最新です（${imported.stats.elapsedMs}ms）`);return}
  const sameName=data.wordLists.find(l=>l.user_id===ownerId&&!l.deleted_at&&normalizeDeckTitle(l.title)===normalizeDeckTitle(title));
  let existing:WordList|undefined,current:WordCard[]=[];
- if(sameName){
+ if(sameName&&splitPart){
+  existing=sameName;
+ }else if(sameName){
   current=await loadWordCards(sameName.id);
   const structureMatch=sameStructureCards(current,imported.cards);
   if(structureMatch){
