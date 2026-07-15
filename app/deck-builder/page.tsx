@@ -9,7 +9,9 @@ const sampleCsv = `Ⅰ,第1章 数と式,,,,1,[0001.png];
 英語,単語,,,,A-12,[front.png];[back.png]`;
 type BuilderMedia={file:File;name:string};
 type BuilderDownload={url:string;fileName:string;size:number};
-const MAX_PACKAGE_BYTES=450*1024*1024;
+type BuilderDeck={title:string;description:string|null;createdAt:string;updatedAt:string;appVersion:string;reviewMode:"default";version:string};
+type ExportPlan={deck:BuilderDeck;chunks:string[][];nameMap:Map<string,string>;fileName:string;rename:boolean;nextIndex:number};
+const MAX_PACKAGE_BYTES=90*1024*1024;
 const mediaExt=(name:string)=>name.match(/\.[a-z0-9]+$/i)?.[0].toLowerCase()||".bin";
 const mediaName=(index:number,file:File)=>`${String(index+1).padStart(4,"0")}${mediaExt(file.name)}`;
 const isAudio=(name:string)=>/\.(mp3|m4a|wav|ogg)$/i.test(name);
@@ -37,37 +39,55 @@ function mediaForRows(rows:string[],files:BuilderMedia[]){
   const refs=new Set(rows.flatMap(mediaRefs));
   return files.filter(item=>refs.has(item.name));
 }
+async function buildPartDownload({deck,rows,index,total,fileName,nameMap,rename,files}:{deck:BuilderDeck;rows:string[];index:number;total:number;fileName:string;nameMap:Map<string,string>;rename:boolean;files:BuilderMedia[]}){
+  const chunkCsv=rows.join("\n"),exportCsv=rename?renameMediaReferences(chunkCsv,nameMap):chunkCsv,chunkMedia=mediaForRows(rows,files).map(item=>({path:`media/${nameMap.get(item.name)||item.name}`,data:item.file}));
+  const blob=await createStoredZipStable([{path:"deck.json",data:encoder.encode(JSON.stringify({...deck,description:total>1?`${deck.description||""}\npart ${index+1}/${total}`.trim():deck.description},null,2))},{path:"cards.csv",data:encoder.encode(exportCsv)},...chunkMedia],1);
+  return makeDownload(blob,total>1?partName(fileName,index,total):fileName);
+}
 
 export default function DeckBuilderPage(){
-  const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<BuilderMedia[]>([]),[message,setMessage]=useState(""),[exporting,setExporting]=useState(false),[downloads,setDownloads]=useState<BuilderDownload[]>([]);
+  const[title,setTitle]=useState("RecaLoopデッキ"),[description,setDescription]=useState(""),[csv,setCsv]=useState(sampleCsv),[files,setFiles]=useState<BuilderMedia[]>([]),[message,setMessage]=useState(""),[exporting,setExporting]=useState(false),[download,setDownload]=useState<BuilderDownload|null>(null),[plan,setPlan]=useState<ExportPlan|null>(null);
   const mediaNames=useMemo(()=>files.map(item=>item.name),[files]);
-  useEffect(()=>()=>downloads.forEach(item=>URL.revokeObjectURL(item.url)),[downloads]);
+  useEffect(()=>()=>{if(download)URL.revokeObjectURL(download.url)},[download]);
+  const replaceDownload=(next:BuilderDownload|null)=>setDownload(current=>{if(current)URL.revokeObjectURL(current.url);return next});
   const addFiles=(next:FileList|null)=>{if(!next?.length)return;setFiles(current=>{const existing=new Set(current.map(item=>`${item.file.name}:${item.file.size}`)),usedNames=new Set(current.map(item=>item.name)),added:BuilderMedia[]=[];Array.from(next).forEach(file=>{const key=`${file.name}:${file.size}`;if(existing.has(key))return;existing.add(key);let name=file.name,dupe=2;while(usedNames.has(name)){const ext=mediaExt(file.name),base=file.name.slice(0,file.name.length-ext.length);name=`${base}_${dupe}${ext}`;dupe++}usedNames.add(name);added.push({file,name})});return[...current,...added]})};
   const insertRef=(name:string)=>setCsv(value=>`${value}${value.endsWith("\n")||!value?"":"\n"},,,,,問題番号,[${name}];`);
   const exportDeck=async()=>{
     setMessage("");
-    setDownloads([]);
+    replaceDownload(null);
+    setPlan(null);
     if(exporting)return;
     setExporting(true);
     try{
       const now=new Date().toISOString();
-      const deck={title:title.trim()||"RecaLoopデッキ",description:description.trim()||null,createdAt:now,updatedAt:now,appVersion:"recaloop-web",reviewMode:"default",version:"1.0.0"};
+      const deck:BuilderDeck={title:title.trim()||"RecaLoopデッキ",description:description.trim()||null,createdAt:now,updatedAt:now,appVersion:"recaloop-web",reviewMode:"default",version:"1.0.0"};
       const cardCount=csv.split(/\r?\n/).filter(line=>line.trim()).length,imageCount=files.filter(item=>!isAudio(item.name)).length,audioCount=files.filter(item=>isAudio(item.name)).length;
       const fileName=prompt(`「${deck.title}」を書き出します\n\nカード：${cardCount}枚\n画像：${imageCount}件\n音声：${audioCount}件\n合計メディア：${files.length}件\n\nファイル名を確認してください。`,recaloopFileName(deck.title));
       if(!fileName)return;
       const rename=files.length?confirm("書き出し時にメディア名を 0001.png のような連番へ変更しますか？\n\nOK: 連番に変更して cards.csv の参照も置換\nキャンセル: 元ファイル名のまま書き出し"):false;
       const nameMap=new Map(files.map((item,index)=>[item.name,rename?mediaName(index,item.file):item.name])),totalMediaBytes=files.reduce((sum,item)=>sum+item.file.size,0),chunks=totalMediaBytes>MAX_PACKAGE_BYTES?chunkRowsByMedia(csv,files):[csv.split(/\r?\n/).filter(line=>line.trim())];
-      if(chunks.length>1)setMessage(`メディアが大きいため ${chunks.length} 個に分割して書き出しています...`);
-      const nextDownloads:BuilderDownload[]=[];
-      for(const [index,rows] of chunks.entries()){
-        const chunkCsv=rows.join("\n"),exportCsv=rename?renameMediaReferences(chunkCsv,nameMap):chunkCsv,chunkMedia=mediaForRows(rows,files).map(item=>({path:`media/${nameMap.get(item.name)||item.name}`,data:item.file}));
-        const blob=await createStoredZipStable([{path:"deck.json",data:encoder.encode(JSON.stringify({...deck,description:chunks.length>1?`${deck.description||""}\npart ${index+1}/${chunks.length}`.trim():deck.description},null,2))},{path:"cards.csv",data:encoder.encode(exportCsv)},...chunkMedia],1);
-        nextDownloads.push(makeDownload(blob,chunks.length>1?partName(fileName,index,chunks.length):fileName));
-        setMessage(`${index+1}/${chunks.length} 個を書き出しました...`);
-        await new Promise(resolve=>setTimeout(resolve,0));
-      }
-      setDownloads(nextDownloads);
-      setMessage(chunks.length>1?`.recaloopを${chunks.length}個に分割しました。各ファイルを順番にダウンロードしてください。`:`.recaloopを書き出しました。`);
+      setMessage(chunks.length>1?`メディアが大きいため ${chunks.length} 個に分割します。まず1個目を作成中...`:"書き出し中...");
+      const first=await buildPartDownload({deck,rows:chunks[0],index:0,total:chunks.length,fileName,nameMap,rename,files});
+      replaceDownload(first);
+      setPlan(chunks.length>1?{deck,chunks,nameMap,fileName,rename,nextIndex:1}:null);
+      setMessage(chunks.length>1?`1/${chunks.length} 個目を作成しました。ダウンロード後に次のパートを作成してください。`:`.recaloopを書き出しました。`);
+    }catch(error){
+      console.error("local deck export failed",error);
+      setMessage(error instanceof Error?error.message:".recaloopの書き出しに失敗しました。");
+    }finally{
+      setExporting(false);
+    }
+  };
+  const buildNextPart=async()=>{
+    if(!plan||exporting)return;
+    setExporting(true);
+    setMessage(`${plan.nextIndex+1}/${plan.chunks.length} 個目を作成中...`);
+    try{
+      const next=await buildPartDownload({deck:plan.deck,rows:plan.chunks[plan.nextIndex],index:plan.nextIndex,total:plan.chunks.length,fileName:plan.fileName,nameMap:plan.nameMap,rename:plan.rename,files});
+      replaceDownload(next);
+      const nextIndex=plan.nextIndex+1;
+      setPlan(nextIndex<plan.chunks.length?{...plan,nextIndex}:null);
+      setMessage(`${nextIndex}/${plan.chunks.length} 個目を作成しました。${nextIndex<plan.chunks.length?"ダウンロード後に次のパートを作成してください。":"これで最後です。"}`);
     }catch(error){
       console.error("local deck export failed",error);
       setMessage(error instanceof Error?error.message:".recaloopの書き出しに失敗しました。");
@@ -107,7 +127,8 @@ export default function DeckBuilderPage(){
             {!mediaNames.length&&<p className="text-sm text-[#718398]">まだメディアがありません。</p>}
           </div>
           {message&&<p className="mt-3 rounded-2xl bg-[#eef5f8] p-3 text-sm font-bold text-[#17334a]">{message}</p>}
-          {downloads.length>0&&<div className="mt-3 space-y-2">{downloads.map(item=><a key={item.fileName} href={item.url} download={item.fileName} className="block rounded-2xl bg-[#17334a] px-4 py-3 text-center text-sm font-black text-white">ダウンロードする（{downloads.length>1?item.fileName:""} {fileSizeLabel(item.size)}）</a>)}</div>}
+          {download&&<a href={download.url} download={download.fileName} className="mt-3 block rounded-2xl bg-[#17334a] px-4 py-3 text-center text-sm font-black text-white">ダウンロードする（{download.fileName} {fileSizeLabel(download.size)}）</a>}
+          {plan&&<button onClick={buildNextPart} disabled={exporting} className="mt-2 w-full rounded-2xl border border-[#d5dfe4] px-4 py-3 text-sm font-black text-[#17334a] disabled:opacity-60">{exporting?"作成中...":`次のパートを作成（${plan.nextIndex+1}/${plan.chunks.length}）`}</button>}
         </aside>
       </section>
     </div>
