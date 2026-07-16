@@ -184,3 +184,268 @@ html,body{background:var(--color-base);color:var(--color-text);letter-spacing:no
 .bottom-nav .active .nav-icon-wrap{background:transparent}
 .bottom-nav button.active,.bottom-nav a.active{color:var(--color-accent)!important}
 @media(max-width:767px){.bottom-nav button,.bottom-nav a{gap:.02rem}.bottom-nav span:last-child{margin-top:-.08rem}}
+
+/* iOS cleanup pass: line icons, readable sizing, and native-feeling settings. */
+html,body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue","Hiragino Sans",sans-serif;
+  font-size:16px;
+  letter-spacing:normal;
+}
+.app-page{color:var(--color-text)}
+.page-header{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr) 44px;
+  align-items:center;
+  min-height:44px;
+  margin:0 0 1rem;
+}
+.page-header>button{
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:transparent;
+  color:var(--color-text);
+  font-size:2rem;
+  font-weight:500;
+  line-height:1;
+}
+.page-header h1{
+  margin:0;
+  text-align:center;
+  font-size:1.06rem;
+  font-weight:750;
+  letter-spacing:normal;
+  line-height:1.2;
+}
+.page-header>div:last-child{
+  min-width:44px;
+  justify-self:end;
+}
+.shop-profile h1{font-size:1.28rem;line-height:1.18}
+.shop-profile p{font-size:.86rem}
+.shop-stat span{font-size:.74rem;line-height:1.35}
+.shop-stat b{font-size:1rem}
+.home-action-grid .ios-menu-card b,.two-column-menu .ios-menu-card b{font-size:.92rem}
+.home-action-grid .ios-menu-card span,.two-column-menu .ios-menu-card span{font-size:.72rem}
+.progress-card .progress-heading h1{font-size:1.35rem}
+.today-review-card h2{font-size:1rem}
+.bottom-nav .nav-icon-wrap{
+  width:28px!important;
+  height:26px!important;
+  display:grid!important;
+  place-items:center!important;
+  background:transparent!important;
+}
+.bottom-nav .nav-icon-wrap svg{
+  width:23px!important;
+  height:23px!important;
+  display:block!important;
+  overflow:visible;
+  filter:none!important;
+  stroke-width:2;
+}
+.bottom-nav button,.bottom-nav a{
+  gap:.16rem!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.bottom-nav button>span:last-child,.bottom-nav a>span:last-child{
+  display:block!important;
+  margin:0!important;
+  font-size:.62rem!important;
+  font-weight:750!important;
+  line-height:1.05!important;
+}
+.bottom-nav button.active,.bottom-nav a.active{
+  color:var(--color-accent)!important;
+}
+.bottom-nav button:not(.active),.bottom-nav a:not(.active){
+  color:color-mix(in srgb,var(--color-text),transparent 45%)!important;
+}
+.nav-badge{
+  right:-7px;
+  top:-7px;
+  min-width:17px;
+  height:17px;
+  font-size:.55rem;
+}
+.settings-ios{
+  display:grid;
+  gap:1.45rem;
+  max-width:760px;
+  margin:0 auto;
+}
+.settings-profile-card{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  align-items:center;
+  gap:1rem;
+  padding:1rem;
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 10px 30px rgba(31,35,38,.05);
+}
+.settings-avatar-picker{
+  display:grid;
+  place-items:center;
+  width:72px;
+  height:72px;
+  overflow:hidden;
+  border-radius:21px;
+  background:color-mix(in srgb,var(--color-accent),#fff 78%);
+  color:var(--color-text);
+  font-size:1.7rem;
+  font-weight:850;
+}
+.settings-avatar-picker img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.settings-profile-card h2{
+  margin:0;
+  font-size:1.18rem;
+  font-weight:780;
+  letter-spacing:normal;
+}
+.settings-profile-card p,.settings-profile-card small{
+  display:block;
+  margin-top:.2rem;
+  color:#8e8e93;
+  font-size:.82rem;
+  line-height:1.35;
+}
+.settings-group h2{
+  margin:0 0 .45rem 1rem;
+  color:#8e8e93;
+  font-size:.82rem;
+  font-weight:650;
+  letter-spacing:normal;
+}
+.settings-group-card{
+  overflow:hidden;
+  border:0;
+  border-radius:24px;
+  background:#fff;
+  box-shadow:0 8px 28px rgba(31,35,38,.045);
+}
+.settings-form-row,.settings-row{
+  display:grid;
+  grid-template-columns:30px minmax(7rem,auto) minmax(0,1fr);
+  align-items:center;
+  gap:.75rem;
+  min-height:54px;
+  padding:0 1rem;
+  border-bottom:1px solid #e5e5ea;
+  color:#111;
+}
+.settings-form-row:last-child,.settings-row:last-child{border-bottom:0}
+.settings-row-icon{
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  border-radius:7px;
+  color:#111;
+}
+.settings-form-row b,.settings-row b{
+  font-size:1rem;
+  font-weight:650;
+  letter-spacing:normal;
+}
+.settings-form-row>div{
+  min-width:0;
+  display:flex;
+  justify-content:flex-end;
+}
+.settings-control{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:#8e8e93;
+  text-align:right;
+  font-size:1rem;
+  font-weight:500;
+  line-height:1.3;
+}
+.settings-control::placeholder{color:#b0b0b6}
+.settings-control:focus{color:#111}
+select.settings-control{
+  appearance:none;
+  -webkit-appearance:none;
+  padding-right:1.1rem;
+}
+.settings-id,.settings-value{
+  min-width:0;
+  overflow:hidden;
+  color:#8e8e93;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:.95rem;
+  font-weight:500;
+}
+.settings-id{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.settings-help{
+  margin:0;
+  padding:.55rem 1rem;
+  border-bottom:1px solid #e5e5ea;
+  color:#d35b55;
+  font-size:.78rem;
+}
+.settings-button-row{
+  padding:.8rem 1rem;
+  border-bottom:1px solid #e5e5ea;
+}
+.settings-button-row:last-child{border-bottom:0}
+.settings-button-row .primary-button,.settings-button-row .secondary-button{
+  width:100%;
+  min-height:44px;
+  border-radius:13px;
+  font-size:.96rem;
+}
+.theme-color-picker{
+  padding:1rem;
+  border-bottom:1px solid #e5e5ea;
+}
+.theme-color-picker p{
+  font-size:1rem;
+  font-weight:650;
+}
+.theme-color-picker button{
+  min-height:44px;
+  border-radius:13px;
+}
+@media(max-width:767px){
+  .app-page>div{padding:1rem 1rem 6.4rem!important}
+  .bottom-nav{
+    width:min(calc(100% - 1.1rem),390px);
+    bottom:calc(.8rem + env(safe-area-inset-bottom));
+    padding:.36rem .45rem;
+  }
+  .bottom-nav button,.bottom-nav a{min-height:50px}
+  .shop-card{border-radius:26px}
+  .shop-profile{padding:1rem}
+  .shop-avatar{width:66px;height:66px}
+  .shop-profile h1{font-size:1.18rem}
+  .shop-stats{padding:.95rem 1rem;gap:.75rem}
+  .shop-image{min-height:150px}
+  .home-action-grid,.two-column-menu{gap:.75rem}
+  .ios-menu-card,.feature-card,.quick-grid>button{
+    min-height:108px;
+    padding:.85rem;
+  }
+  .settings-profile-card{border-radius:22px}
+  .settings-form-row,.settings-row{
+    grid-template-columns:28px minmax(5.8rem,auto) minmax(0,1fr);
+    min-height:52px;
+    padding:0 .9rem;
+  }
+  .settings-form-row b,.settings-row b,.settings-control{font-size:.96rem}
+}
