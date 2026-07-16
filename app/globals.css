@@ -177,3 +177,10 @@ html,body{background:var(--color-base);color:var(--color-text);letter-spacing:no
 .review-hero{background:var(--color-surface);color:var(--color-text);border:1px solid var(--color-border);box-shadow:none}.review-hero p,.review-hero small{color:color-mix(in srgb,var(--color-text),transparent 42%)}.review-hero button{background:var(--color-text);color:#fff}
 .rating-button.selected{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent),#fff 78%)}.check-toggle{position:relative}.check-toggle.active{border-color:var(--color-accent);background:color-mix(in srgb,var(--color-accent),#fff 78%);color:var(--color-text)}
 @media(max-width:767px){.app-page>div{padding-top:.85rem!important}.shop-profile{grid-template-columns:auto minmax(0,1fr);padding:1.2rem 1.1rem .9rem}.shop-avatar{width:74px;height:74px}.shop-profile h1{font-size:1.35rem}.shop-stats{padding:1rem 1.1rem;gap:.9rem}.shop-image{min-height:170px}.home-action-grid,.two-column-menu{gap:.75rem}.ios-menu-card,.feature-card,.quick-grid>button{min-height:122px;border-radius:20px;padding:.8rem}.theme-color-picker>div{grid-template-columns:1fr}.settings-inline{grid-template-columns:1fr}.page-header{margin-top:.1rem}.page-header h1{font-size:1.04rem}}
+
+/* Bottom navigation uses sticker-style SVG icons directly. */
+.nav-icon-wrap{width:38px;height:34px}
+.nav-icon-wrap svg{width:31px;height:31px;overflow:visible;filter:none!important}
+.bottom-nav .active .nav-icon-wrap{background:transparent}
+.bottom-nav button.active,.bottom-nav a.active{color:var(--color-accent)!important}
+@media(max-width:767px){.bottom-nav button,.bottom-nav a{gap:.02rem}.bottom-nav span:last-child{margin-top:-.08rem}}
