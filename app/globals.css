@@ -449,3 +449,154 @@ select.settings-control{
   }
   .settings-form-row b,.settings-row b,.settings-control{font-size:.96rem}
 }
+
+/* Apple HIG foundation layer. Keep this last so old page-specific styles cannot drift apart. */
+:root{
+  --ios-space-1:4px;
+  --ios-space-2:8px;
+  --ios-space-3:12px;
+  --ios-space-4:16px;
+  --ios-space-5:20px;
+  --ios-space-6:24px;
+  --ios-space-8:32px;
+  --ios-radius-sm:12px;
+  --ios-radius-md:16px;
+  --ios-radius-lg:22px;
+  --ios-list-radius:24px;
+  --ios-hit:44px;
+  --ios-text-primary:var(--color-text);
+  --ios-text-secondary:color-mix(in srgb,var(--color-text),transparent 38%);
+  --ios-text-tertiary:color-mix(in srgb,var(--color-text),transparent 58%);
+  --ios-surface:#fff;
+  --ios-grouped:color-mix(in srgb,var(--color-base),#fff 58%);
+  --ios-separator:rgba(60,60,67,.14);
+  --ios-overlay:rgba(0,0,0,.28);
+  --ios-press:color-mix(in srgb,var(--color-accent),#000 8%);
+}
+button,a,input,select,textarea{font-family:inherit}
+button,a{touch-action:manipulation}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--color-accent),transparent 42%);
+  outline-offset:2px;
+}
+.landing-screen{
+  min-height:100svh;
+  display:grid;
+  place-items:center;
+  padding:calc(24px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  background:var(--color-base);
+}
+.landing-panel{
+  width:min(100%,420px);
+  display:grid;
+  justify-items:center;
+  gap:16px;
+  text-align:center;
+}
+.landing-icon{
+  width:86px;
+  height:86px;
+  border-radius:22px;
+}
+.landing-panel h1{
+  margin:0;
+  font-size:34px;
+  line-height:1.1;
+  font-weight:750;
+  letter-spacing:-.02em;
+}
+.landing-copy{
+  max-width:20rem;
+  margin:0;
+  color:var(--ios-text-secondary);
+  font-size:17px;
+  line-height:1.45;
+}
+.landing-list{
+  width:100%;
+  overflow:hidden;
+  border-radius:var(--ios-list-radius);
+  background:var(--ios-surface);
+}
+.landing-list article{
+  display:grid;
+  grid-template-columns:32px minmax(0,1fr);
+  gap:12px;
+  align-items:center;
+  min-height:64px;
+  padding:10px 16px;
+  text-align:left;
+}
+.landing-list article+article{
+  border-top:1px solid var(--ios-separator);
+}
+.landing-list svg{color:var(--ios-text-primary)}
+.landing-list b{
+  display:block;
+  font-size:17px;
+  font-weight:650;
+}
+.landing-list p{
+  margin:.12rem 0 0;
+  color:var(--ios-text-secondary);
+  font-size:13px;
+  line-height:1.35;
+}
+.primary-button,.secondary-button,.save-button,.filter-chip,.btn{
+  min-height:var(--ios-hit);
+  border-radius:var(--ios-radius-sm);
+  font-size:16px;
+  font-weight:650;
+  letter-spacing:normal;
+}
+.primary-button{
+  background:var(--color-accent);
+  color:#fff;
+}
+.primary-button:hover{background:var(--ios-press)}
+.secondary-button,.filter-chip{
+  background:var(--ios-surface);
+  border:1px solid var(--ios-separator);
+  color:var(--ios-text-primary);
+}
+.surface,.card{
+  border:0;
+  background:var(--ios-surface);
+  box-shadow:none;
+}
+.notice{
+  border-radius:var(--ios-radius-md);
+  background:color-mix(in srgb,var(--color-accent),#fff 78%);
+  color:var(--ios-text-primary);
+}
+.loading-overlay{
+  padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+  background:color-mix(in srgb,var(--color-base),transparent 12%);
+}
+.coffee-loader{
+  color:var(--ios-text-primary);
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+    scroll-behavior:auto!important;
+  }
+}
+@media(max-width:767px){
+  .bottom-nav{
+    border:0;
+    background:rgba(255,255,255,.86);
+    box-shadow:0 4px 18px rgba(0,0,0,.08);
+    -webkit-backdrop-filter:blur(18px);
+    backdrop-filter:blur(18px);
+  }
+  .page-header{
+    position:sticky;
+    top:0;
+    z-index:20;
+    padding-top:env(safe-area-inset-top);
+    background:var(--color-base);
+  }
+}
