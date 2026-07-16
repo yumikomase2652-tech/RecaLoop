@@ -111,3 +111,32 @@ export async function localMediaUrl(id: string) {
   const record = await getLocalMedia(id);
   return record ? { record, url: URL.createObjectURL(record.blob) } : null;
 }
+
+export async function listLocalMedia() {
+  return withStore<LocalMediaRecord[]>("readonly", store => store.getAll());
+}
+
+export async function deleteLocalMedia(ids: string[]) {
+  if (!ids.length) return 0;
+  const db = await openDb();
+  return new Promise<number>((resolve, reject) => {
+    let deleted = 0;
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    tx.oncomplete = () => {
+      db.close();
+      resolve(deleted);
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
+    ids.forEach(id => {
+      const request = store.delete(id);
+      request.onsuccess = () => {
+        deleted++;
+      };
+      request.onerror = () => reject(request.error);
+    });
+  });
+}
