@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookCopy, ChevronRight, Layers3, Sparkles } from "lucide-react";
+import { CoffeeLoader } from "@/components/coffee-loader";
 import { copySharedCards, copySharedCardsForStudent, copySharedMaterial, copySharedMaterialForStudent, loadSharedCards, loadSharedMaterial } from "@/lib/recaloop-data";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/client";
 import type { MaterialNode, SharedCards, SharedMaterial } from "@/lib/types";
@@ -53,7 +54,7 @@ export function SharedContent({ type, token }: { type: "material" | "cards"; tok
     }
   };
 
-  if (data === undefined) return <Frame><p>読み込み中...</p></Frame>;
+  if (data === undefined) return <Frame><CoffeeLoader /></Frame>;
   if (!data) return <Frame><h1 className="text-2xl font-black">配布リンクが無効です</h1><p className="text-sm text-[#718398] mt-2">配布が停止されたか、URLが正しくありません。</p></Frame>;
 
   const source = type === "material" ? (data as SharedMaterial).deck : (data as SharedCards).list;

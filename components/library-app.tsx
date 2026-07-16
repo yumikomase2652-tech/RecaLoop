@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookCopy, BookOpen, Layers3, Search, Trophy } from "lucide-react";
 import { AppRouteNav } from "@/components/app-route-nav";
+import { CoffeeLoader } from "@/components/coffee-loader";
 import { copySharedCards, copySharedCardsForStudent, copySharedMaterial, copySharedMaterialForStudent, loadLibrary } from "@/lib/recaloop-data";
 import { createClient, hasSupabaseEnv } from "@/lib/supabase/client";
 import type { LibraryItem } from "@/lib/types";
@@ -116,7 +117,7 @@ export function LibraryApp() {
         </article>)}
       </div>
       {!loading && !items.length && <div className="surface p-10 text-center mt-7"><b>該当する公開コンテンツはありません。</b></div>}
-      {loading && <p className="text-sm text-[#71818d] mt-8">読み込み中...</p>}
+      {loading && <div className="mt-8"><CoffeeLoader compact label="ライブラリを準備しています" /></div>}
     </div>
   </main></>;
 }

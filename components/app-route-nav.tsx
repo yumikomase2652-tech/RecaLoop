@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { useEffect,useState } from "react";
-import { Bell,ChartNoAxesColumnIncreasing,Clock3,Coffee,Home,Layers3,Settings } from "lucide-react";
+import { Bell,Settings } from "lucide-react";
+import { CafeTabIcon,CalendarTabIcon,HomeTabIcon,StudyTabIcon,SummaryTabIcon } from "@/components/nav-icons";
 import { createClient,hasSupabaseEnv } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/types";
 
 const items = [
-  ["home", "ホーム", Home, "/dashboard?view=home"],
-  ["study", "学習", Clock3, "/dashboard?view=study"],
-  ["materials", "教材", Layers3, "/dashboard?view=materials"],
-  ["progress", "進捗", ChartNoAxesColumnIncreasing, "/dashboard?view=progress"],
-  ["cafe", "カフェ", Coffee, "/dashboard?view=cafe"],
+  ["home", "Home", HomeTabIcon, "/dashboard?view=home"],
+  ["study", "Study", StudyTabIcon, "/dashboard?view=study"],
+  ["calendar", "Calendar", CalendarTabIcon, "/dashboard?view=calendar"],
+  ["progress", "Summary", SummaryTabIcon, "/dashboard?view=progress"],
+  ["cafe", "Cafe", CafeTabIcon, "/dashboard?view=cafe"],
 ] as const;
 
 export function AppRouteNav({ active }: { active: string }) {
-  const activeId = active === "library" || active === "rankings" ? "materials" : active;
+  const activeId = active === "library" || active === "rankings" || active === "materials" || active === "decks" ? "study" : active;
   const [role, setRole] = useState<UserRole>(() => {
     if (typeof window === "undefined") return "none";
     return (localStorage.getItem("recaloop-role") as UserRole) || "none";
@@ -43,7 +44,7 @@ export function AppRouteNav({ active }: { active: string }) {
       </div>
     </aside>
     <nav className="bottom-nav" aria-label="メインメニュー">
-      {items.map(([id, label, Icon, href]) => <Link key={id} href={href} aria-label={label} title={label} aria-current={activeId === id ? "page" : undefined} className={activeId === id ? "active" : ""}><Icon size={20} /><span>{label}</span></Link>)}
+      {items.map(([id, label, Icon, href]) => <Link key={id} href={href} aria-label={label} title={label} aria-current={activeId === id ? "page" : undefined} className={activeId === id ? "active" : ""}><span className="nav-icon-wrap"><Icon size={22} /></span><span>{label}</span></Link>)}
     </nav>
   </>;
 }
