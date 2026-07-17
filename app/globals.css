@@ -4776,3 +4776,213 @@ textarea{
     padding:5px;
   }
 }
+
+/* Latest visible-screen corrections */
+.app-page .lab-shop-card{
+  min-height:clamp(430px,60vh,560px);
+  gap:14px;
+  padding:18px;
+  overflow:hidden;
+  background-size:cover!important;
+  background-position:center!important;
+}
+.app-page .lab-shop-profile{
+  width:100%;
+  display:grid;
+  grid-template-columns:72px minmax(0,1fr) 20px;
+  align-items:center;
+  gap:14px;
+  min-height:92px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  text-align:left;
+}
+.app-page .lab-shop-profile svg{color:var(--lab-muted-color)}
+.app-page .lab-shop-avatar{
+  display:grid;
+  place-items:center;
+  width:72px;
+  height:72px;
+  overflow:hidden;
+  color:var(--lab-text-color);
+  font-size:1.45rem;
+  font-weight:850;
+  font-style:normal;
+}
+.app-page .lab-shop-avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.app-page .lab-shop-profile b{font-size:1.42rem}
+.app-page .lab-shop-divider{border-top:2px dashed rgba(23,47,66,.14)}
+.app-page .lab-shop-records{padding:2px 2px 0}
+.app-page .lab-shop-cafe-button{
+  display:block;
+  width:100%;
+  min-height:220px;
+  padding:0;
+  border:0;
+  border-radius:24px;
+  background:transparent;
+  overflow:hidden;
+}
+.app-page .lab-shop-cafe-button .lab-cafe-preview{min-height:220px}
+.home-ios .primary-study-card{display:none!important}
+.app-page .lab-study-action{
+  min-height:102px;
+  align-content:space-between;
+  padding:16px;
+  border-radius:22px;
+}
+.app-page .lab-study-action-icon{
+  align-self:start;
+  justify-self:start;
+  min-height:34px;
+}
+.app-page .lab-study-action-icon svg{
+  width:31px;
+  height:31px;
+  stroke-width:2.05;
+}
+.app-page .lab-study-action-value{
+  top:12px;
+  right:17px;
+  font-size:1.55rem;
+  line-height:1;
+  letter-spacing:-.035em;
+}
+.app-page .lab-study-action-label{
+  width:100%;
+  overflow:hidden;
+  font-size:1.02rem;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.app-page .lab-study-action.empty .lab-study-action-label{color:var(--lab-muted-color)}
+.ios-page-nav,
+.page-header{
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.ios-page-nav h1,
+.page-header h1{
+  color:var(--lab-text-color);
+  font-size:1.06rem;
+  font-weight:780;
+  letter-spacing:-.02em;
+}
+.ios-back-button,
+.page-header>button{
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.settings-ios{gap:14px}
+.settings-profile-card.settings-profile-button{
+  width:100%;
+  min-height:118px;
+  grid-template-columns:74px minmax(0,1fr) 20px;
+  align-items:center;
+  border:1px solid var(--lab-line-color);
+  text-align:left;
+}
+.settings-profile-card.settings-profile-button .settings-avatar-picker{
+  width:74px;
+  height:74px;
+  border-radius:20px;
+}
+.settings-profile-card.settings-profile-button h2{font-size:1.24rem}
+.settings-profile-card.settings-profile-button p,
+.settings-profile-card.settings-profile-button small{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.settings-nav-row{
+  width:100%;
+  cursor:pointer;
+}
+.settings-nav-value{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:4px;
+  min-width:0;
+  color:var(--lab-muted-color);
+  font-size:.78rem;
+  font-weight:650;
+}
+.settings-avatar-inline label{
+  display:grid;
+  place-items:center;
+  width:46px;
+  height:46px;
+  overflow:hidden;
+  border-radius:14px;
+  background:var(--lab-fill-color);
+  font-weight:800;
+}
+.settings-avatar-inline img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.settings-bg-preview{
+  min-height:120px;
+  margin:12px;
+  border-radius:18px;
+  background-size:cover;
+  background-position:center;
+}
+.calendar-titlebar{
+  grid-template-columns:44px minmax(0,1fr) 44px!important;
+  gap:8px;
+}
+.calendar-title-center{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-width:0;
+}
+.calendar-month-button{
+  min-width:0;
+  padding-inline:4px;
+  background:transparent!important;
+}
+.calendar-this-month{
+  min-height:32px!important;
+  padding-inline:10px;
+  border-radius:999px!important;
+}
+.summary-screen,
+.summary-screen *{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Arial,sans-serif;
+}
+.summary-section h2{font-size:1.02rem;font-weight:760}
+.summary-section p{font-size:.82rem;font-weight:620}
+.summary-metrics .rounded-xl{
+  border:1px solid var(--lab-line-color);
+  background:var(--lab-surface-color)!important;
+}
+.summary-metrics b{
+  color:var(--lab-text-color);
+  font-size:1.1rem!important;
+  font-weight:780;
+}
+.summary-metrics span{font-size:.72rem!important}
+@media(max-width:430px){
+  .app-page .lab-shop-card{min-height:clamp(410px,58vh,520px);padding:16px}
+  .app-page .lab-shop-profile{grid-template-columns:66px minmax(0,1fr) 18px;min-height:84px}
+  .app-page .lab-shop-avatar{width:66px;height:66px}
+  .app-page .lab-shop-profile b{font-size:1.28rem}
+  .app-page .lab-shop-cafe-button,.app-page .lab-shop-cafe-button .lab-cafe-preview{min-height:200px}
+  .app-page .lab-study-action{min-height:98px;padding:14px}
+  .app-page .lab-study-action-value{font-size:1.42rem}
+  .app-page .lab-study-action-label{font-size:.96rem}
+}

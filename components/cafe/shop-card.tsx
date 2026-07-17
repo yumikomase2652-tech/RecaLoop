@@ -1,4 +1,4 @@
-import { Coffee, BookOpen } from "lucide-react";
+import { ChevronRight, Coffee, BookOpen } from "lucide-react";
 import { CafePreview } from "./cafe-preview";
 
 type ShopCardProps = {
@@ -7,27 +7,38 @@ type ShopCardProps = {
   grade: string;
   minutes: string;
   questions: string;
-  onClick?: () => void;
+  avatar?: string;
+  targetSchool?: string;
+  background?: { type: "color" | "image"; value: string };
+  onAccountClick?: () => void;
+  onCafeClick?: () => void;
 };
 
-export function ShopCard({ nickname, handle, grade, minutes, questions, onClick }: ShopCardProps) {
+export function ShopCard({ nickname, handle, grade, minutes, questions, avatar, targetSchool, background, onAccountClick, onCafeClick }: ShopCardProps) {
+  const style = background?.value
+    ? background.type === "image"
+      ? { backgroundImage: `linear-gradient(rgba(255,255,255,.72), rgba(255,255,255,.72)), url(${background.value})` }
+      : { background: background.value }
+    : undefined;
   return (
-    <button className="lab-shop-card" onClick={onClick}>
-      <span className="lab-shop-profile">
-        <i className="lab-shop-avatar" />
+    <article className="lab-shop-card" style={style}>
+      <button className="lab-shop-profile" onClick={onAccountClick} type="button">
+        <i className="lab-shop-avatar">{avatar ? <img src={avatar} alt="" /> : nickname.slice(0, 1)}</i>
         <span>
           <b>{nickname}</b>
-          <small>{handle}　|　{grade}</small>
+          <small>{handle}　|　{grade}{targetSchool ? `　|　${targetSchool}` : ""}</small>
         </span>
-      </span>
+        <ChevronRight size={18} />
+      </button>
       <span className="lab-shop-divider" />
       <span className="lab-shop-records">
         <span><Coffee size={18} /> 今日 {minutes}</span>
         <span><BookOpen size={18} /> 今日 {questions}</span>
       </span>
       <span className="lab-shop-divider" />
-      <CafePreview />
-    </button>
+      <button className="lab-shop-cafe-button" onClick={onCafeClick} type="button" aria-label="カフェを見る">
+        <CafePreview />
+      </button>
+    </article>
   );
 }
-

@@ -13,11 +13,10 @@ type StudyActionCardProps = {
 
 export function StudyActionCard({ icon, label, value, empty = false, tone = "schedule", onClick }: StudyActionCardProps) {
   return (
-    <button className={`lab-study-action ${tone} ${empty ? "empty" : ""}`} onClick={onClick}>
+    <button className={`lab-study-action ${tone} ${empty ? "empty" : ""}`} onClick={onClick} title={label}>
       <span className="lab-study-action-icon">{icon}</span>
       {value !== undefined && <b className="lab-study-action-value">{value}</b>}
       <span className="lab-study-action-label">{label}</span>
     </button>
   );
 }
-
