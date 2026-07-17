@@ -2494,3 +2494,244 @@ body *{
     font-size:12px;
   }
 }
+
+/* Route English inspired final UI layer: soft iOS cards, compact study tiles, grouped settings. */
+:root{
+  --route-page:#f6f6f8;
+  --route-card:#ffffff;
+  --route-shadow:0 8px 0 rgba(28,28,30,.07);
+  --route-line:rgba(60,60,67,.13);
+  --route-muted:#8e8e93;
+  --route-radius:26px;
+}
+.app-page{
+  background:var(--route-page);
+}
+.ios-screen{
+  gap:18px;
+}
+.home-ios .home-shop-card,
+.today-learning-card,
+.home-ios .home-today-actions button,
+.ios-action-grid>button,
+.ios-action-grid>.feature-card,
+.ios-list,
+.settings-profile-card,
+.settings-group-card,
+.ios-inline-progress{
+  border:1px solid var(--route-line);
+  background:var(--route-card);
+  box-shadow:var(--route-shadow);
+}
+.home-ios .home-shop-card{
+  min-height:min(60vh,560px);
+  border-radius:30px;
+}
+.home-ios .home-shop-top{
+  grid-template-columns:72px minmax(0,1fr) 18px;
+  padding:22px 22px 16px;
+}
+.home-ios .home-shop-card .home-avatar{
+  width:72px;
+  height:72px;
+  background:color-mix(in srgb,var(--color-accent),#fff 78%);
+}
+.home-ios .home-shop-main b{
+  color:#1c1c1e;
+  font-size:25px;
+  letter-spacing:-.02em;
+}
+.home-ios .home-shop-main em{
+  color:var(--route-muted);
+  font-size:14px;
+}
+.home-ios .home-shop-divider{
+  margin:0 22px;
+}
+.home-ios .home-shop-stats{
+  padding:18px 22px;
+}
+.home-ios .home-shop-stats small{
+  color:#6e6e73;
+}
+.home-ios .home-shop-stats b{
+  color:#1c1c1e;
+  font-size:21px;
+}
+.home-ios .home-cafe-scene{
+  min-height:clamp(210px,29vh,300px);
+}
+.home-ios .home-today-actions{
+  gap:12px;
+}
+.home-ios .home-today-actions button,
+.ios-action-grid>button,
+.ios-action-grid>.feature-card{
+  border-radius:var(--route-radius);
+  transition:transform .12s ease,background .12s ease;
+}
+.home-ios .home-today-actions button:active,
+.ios-action-grid>button:active,
+.ios-action-grid>.feature-card:active{
+  transform:scale(.985);
+  background:#fafafa;
+}
+.home-ios .home-today-actions button{
+  min-height:104px;
+  grid-template-columns:34px minmax(0,1fr);
+  padding:18px;
+}
+.home-ios .home-today-actions svg,
+.ios-action-grid svg{
+  color:var(--color-accent);
+}
+.home-ios .home-today-actions b,
+.ios-action-grid b{
+  color:#111;
+  font-size:19px;
+  line-height:1.18;
+  font-weight:760;
+  letter-spacing:-.02em;
+}
+.home-ios .home-today-actions small,
+.ios-action-grid small,
+.ios-action-grid p{
+  color:var(--route-muted);
+  font-size:14px;
+}
+.home-progress-card{
+  display:none;
+}
+.study-hub-ios .today-learning-card{
+  border-radius:var(--route-radius);
+  box-shadow:var(--route-shadow);
+}
+.study-hub-ios .ios-action-grid>button,
+.study-hub-ios .ios-action-grid>.feature-card{
+  min-height:116px;
+  height:116px;
+  padding:18px;
+}
+.study-hub-ios .ios-action-grid svg{
+  width:30px;
+  height:30px;
+  margin-bottom:10px;
+}
+.materials-ios .ios-list,
+.deck-list-ios{
+  border-radius:24px;
+}
+.materials-ios .ios-list-row,
+.deck-list-ios .ios-list-row{
+  min-height:66px;
+  padding-top:8px;
+  padding-bottom:8px;
+}
+.ios-row-icon,
+.settings-row-icon{
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  background:color-mix(in srgb,var(--color-accent),#fff 76%);
+  color:var(--color-text);
+}
+.ios-row-main b,
+.settings-form-row>b{
+  color:#111;
+  font-size:17px;
+  font-weight:650;
+}
+.ios-row-main small,
+.settings-value,
+.settings-id{
+  color:var(--route-muted);
+  font-size:14px;
+}
+.settings-ios{
+  gap:24px;
+}
+.settings-profile-card{
+  border-radius:24px;
+  padding:18px;
+}
+.settings-group h2{
+  padding-inline:8px;
+  color:var(--route-muted);
+  font-size:13px;
+  font-weight:700;
+}
+.settings-group-card{
+  overflow:hidden;
+  border-radius:24px;
+}
+.settings-form-row{
+  min-height:58px;
+  grid-template-columns:34px minmax(7rem,1fr) minmax(0,1fr);
+  padding-inline:18px;
+}
+.settings-button-row{
+  padding:10px 18px 14px;
+}
+.bottom-nav{
+  border:1px solid rgba(255,255,255,.72);
+  background:rgba(255,255,255,.86);
+  box-shadow:0 16px 36px rgba(28,28,30,.12);
+}
+.bottom-nav button,
+.bottom-nav a{
+  gap:3px;
+  color:#8e8e93;
+}
+.bottom-nav button.active,
+.bottom-nav a.active{
+  color:var(--color-accent);
+  background:rgba(118,118,128,.1);
+}
+@media(max-width:767px){
+  .ios-screen{
+    gap:16px;
+  }
+  .home-ios .home-shop-card{
+    min-height:min(60vh,540px);
+  }
+  .home-ios .home-shop-top{
+    grid-template-columns:66px minmax(0,1fr) 16px;
+    padding:20px 20px 15px;
+  }
+  .home-ios .home-shop-card .home-avatar{
+    width:66px;
+    height:66px;
+  }
+  .home-ios .home-shop-main b{
+    font-size:23px;
+  }
+  .home-ios .home-cafe-scene{
+    min-height:clamp(190px,28vh,260px);
+  }
+  .home-ios .home-today-actions button{
+    min-height:96px;
+    padding:16px;
+  }
+  .home-ios .home-today-actions b,
+  .ios-action-grid b{
+    font-size:17px;
+  }
+  .study-hub-ios .ios-action-grid>button,
+  .study-hub-ios .ios-action-grid>.feature-card{
+    min-height:108px;
+    height:108px;
+  }
+}
+@media(max-width:360px){
+  .home-ios .home-today-actions button{
+    min-height:90px;
+    padding:14px;
+  }
+  .home-ios .home-today-actions b,
+  .ios-action-grid b{
+    font-size:16px;
+  }
+  .home-ios .home-shop-stats b{
+    font-size:18px;
+  }
+}
