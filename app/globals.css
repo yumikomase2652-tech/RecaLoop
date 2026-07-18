@@ -4907,6 +4907,37 @@ textarea{
   width:100%;
   cursor:pointer;
 }
+.settings-top-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 22px;
+  align-items:center;
+  width:100%;
+  min-height:58px;
+  padding:0 16px;
+  border:0;
+  border-bottom:1px solid var(--lab-line-color);
+  background:transparent;
+  color:var(--lab-text-color);
+  text-align:left;
+  cursor:pointer;
+}
+.settings-top-row:last-child{
+  border-bottom:0;
+}
+.settings-top-row b{
+  min-width:0;
+  overflow:hidden;
+  color:var(--lab-text-color);
+  font-size:1rem;
+  font-weight:720;
+  letter-spacing:-.018em;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.settings-top-row svg{
+  justify-self:end;
+  color:var(--lab-muted-color);
+}
 .settings-nav-value{
   display:flex;
   align-items:center;
