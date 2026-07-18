@@ -24,7 +24,7 @@ export function ShopCard({ nickname, handle, grade, minutes, questions, avatar, 
   return (
     <article className="lab-shop-card" style={style}>
       <button className="lab-shop-profile" onClick={onAccountClick} type="button">
-        <i className="lab-shop-avatar" style={!avatar && avatarColor ? { background: avatarColor } : undefined}>{avatar ? <img src={avatar} alt="" /> : nickname.slice(0, 1)}</i>
+        <i className="lab-shop-avatar" style={!avatar && avatarColor ? { background: avatarColor } : undefined}>{avatar ? <img src={avatar} alt="" /> : null}</i>
         <span>
           <b>{nickname}</b>
           <small>{handle}　|　{grade}{targetSchool ? `　|　${targetSchool}` : ""}</small>

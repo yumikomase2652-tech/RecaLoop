@@ -16,6 +16,10 @@ alter table public.profiles add column if not exists grade_updated_year int;
 alter table public.profiles add column if not exists onboarding_completed boolean default false;
 alter table public.profiles add column if not exists public_handle text;
 
+update public.profiles
+set public_handle = 'user_' || substr(replace(id::text,'-',''),1,8)
+where nullif(trim(coalesce(public_handle,'')),'') is null;
+
 alter table public.profiles drop constraint if exists profiles_age_group_check;
 alter table public.profiles add constraint profiles_age_group_check check(
   age_group is null
@@ -39,10 +43,10 @@ where public_handle is not null and public_handle <> '';
 
 alter table public.profiles drop constraint if exists profiles_public_handle_format_check;
 alter table public.profiles add constraint profiles_public_handle_format_check check(
-  public_handle is null
-  or public_handle = ''
-  or public_handle ~ '^[A-Za-z0-9_]{3,20}$'
+  public_handle ~ '^[A-Za-z0-9_]{3,20}$'
 );
+
+alter table public.profiles alter column public_handle set not null;
 
 drop function if exists public.update_learning_profile(text,text,text,text);
 drop function if exists public.update_learning_profile(text,text,text,text,text);
@@ -61,7 +65,7 @@ set search_path=public
 as $$
 declare
   resolved_age_group text := p_age_group;
-  normalized_handle text := nullif(trim(coalesce(p_public_handle,'')),'');
+  normalized_handle text := coalesce(nullif(trim(coalesce(p_public_handle,'')),''),'user_' || substr(replace(auth.uid()::text,'-',''),1,8));
 begin
   if p_grade_level not in(
     '小学1年生','小学2年生','小学3年生','小学4年生','小学5年生','小学6年生',
@@ -109,6 +113,24 @@ begin
       grade_updated_year=public.current_academic_year()
   where id=auth.uid();
   if not found then raise exception 'profile not found'; end if;
+end
+$$;
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path=public
+as $$
+begin
+  insert into public.profiles(id,display_name,public_handle)
+  values(
+    new.id,
+    coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email,'@',1), ''),
+    'user_' || substr(replace(new.id::text,'-',''),1,8)
+  )
+  on conflict (id) do nothing;
+  return new;
 end
 $$;
 
