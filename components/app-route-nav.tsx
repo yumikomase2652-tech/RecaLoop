@@ -2,21 +2,21 @@
 
 import Link from "next/link";
 import { useEffect,useState } from "react";
-import { Bell,Settings } from "lucide-react";
-import { CafeTabIcon,CalendarTabIcon,HomeTabIcon,StudyTabIcon,SummaryTabIcon } from "@/components/nav-icons";
+import { Settings } from "lucide-react";
+import { CafeTabIcon,CalendarTabIcon,HomeTabIcon,SummaryTabIcon } from "@/components/nav-icons";
 import { createClient,hasSupabaseEnv } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/types";
 
 const items = [
   ["home", "Home", HomeTabIcon, "/dashboard?view=home"],
-  ["study", "Study", StudyTabIcon, "/dashboard?view=study"],
   ["calendar", "Calendar", CalendarTabIcon, "/dashboard?view=calendar"],
   ["progress", "Summary", SummaryTabIcon, "/dashboard?view=progress"],
   ["cafe", "Cafe", CafeTabIcon, "/dashboard?view=cafe"],
+  ["settings", "Settings", Settings, "/dashboard?view=settings"],
 ] as const;
 
 export function AppRouteNav({ active }: { active: string }) {
-  const activeId = active === "library" || active === "rankings" || active === "materials" || active === "decks" ? "study" : active;
+  const activeId = active === "library" || active === "rankings" || active === "materials" || active === "decks" ? "home" : active;
   const [role, setRole] = useState<UserRole>(() => {
     if (typeof window === "undefined") return "none";
     return (localStorage.getItem("recaloop-role") as UserRole) || "none";
@@ -38,9 +38,7 @@ export function AppRouteNav({ active }: { active: string }) {
     <aside className="app-sidebar">
       {items.map(([id, label, Icon, href]) => <Link key={id} href={href} className={activeId === id ? "active" : ""}><Icon size={18} />{label}</Link>)}
       <div className="sidebar-mini-links">
-        <Link href="/dashboard?view=notices" className={activeId === "notices" ? "active" : ""}><Bell size={16} />お知らせ</Link>
         {roleItem && <Link href={roleItem[2]} className={activeId === roleItem[0] ? "active" : ""}>{roleItem[1]}</Link>}
-        <Link href="/dashboard?view=settings" className={activeId === "settings" ? "active" : ""}><Settings size={16} />設定</Link>
       </div>
     </aside>
     <nav className="bottom-nav" aria-label="メインメニュー">
