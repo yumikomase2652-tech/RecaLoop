@@ -5322,12 +5322,11 @@ textarea{
 /* Home sharing and simplified action layout */
 .home-shop-wrap{
   position:relative;
-  padding-top:38px;
 }
 .home-share-button{
   position:absolute;
-  top:0;
-  left:2px;
+  top:18px;
+  right:18px;
   z-index:3;
   display:grid;
   place-items:center;
@@ -5473,8 +5472,7 @@ textarea{
   font-weight:650;
 }
 @media(max-width:430px){
-  .home-shop-wrap{padding-top:34px}
-  .home-share-button{width:34px;height:34px}
+  .home-share-button{top:14px;right:14px;width:34px;height:34px}
   .home-study-actions{gap:10px}
   .home-study-actions .lab-study-action{min-height:96px}
 }
