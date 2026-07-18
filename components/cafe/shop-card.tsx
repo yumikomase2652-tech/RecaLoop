@@ -8,13 +8,14 @@ type ShopCardProps = {
   minutes: string;
   questions: string;
   avatar?: string;
+  avatarColor?: string;
   targetSchool?: string;
   background?: { type: "color" | "image"; value: string };
   onAccountClick?: () => void;
   onCafeClick?: () => void;
 };
 
-export function ShopCard({ nickname, handle, grade, minutes, questions, avatar, targetSchool, background, onAccountClick, onCafeClick }: ShopCardProps) {
+export function ShopCard({ nickname, handle, grade, minutes, questions, avatar, avatarColor, targetSchool, background, onAccountClick, onCafeClick }: ShopCardProps) {
   const style = background?.value
     ? background.type === "image"
       ? { backgroundImage: `linear-gradient(rgba(255,255,255,.72), rgba(255,255,255,.72)), url(${background.value})` }
@@ -23,7 +24,7 @@ export function ShopCard({ nickname, handle, grade, minutes, questions, avatar, 
   return (
     <article className="lab-shop-card" style={style}>
       <button className="lab-shop-profile" onClick={onAccountClick} type="button">
-        <i className="lab-shop-avatar">{avatar ? <img src={avatar} alt="" /> : nickname.slice(0, 1)}</i>
+        <i className="lab-shop-avatar" style={!avatar && avatarColor ? { background: avatarColor } : undefined}>{avatar ? <img src={avatar} alt="" /> : nickname.slice(0, 1)}</i>
         <span>
           <b>{nickname}</b>
           <small>{handle}　|　{grade}{targetSchool ? `　|　${targetSchool}` : ""}</small>
