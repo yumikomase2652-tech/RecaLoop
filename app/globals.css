@@ -5476,3 +5476,149 @@ textarea{
   .home-study-actions{gap:10px}
   .home-study-actions .lab-study-action{min-height:96px}
 }
+
+/* Requested refinements: shop profile/meta, settings chips, and materials toolbar */
+.app-page .lab-shop-profile small.lab-shop-profile-meta{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:2px!important;
+  margin-top:5px!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:normal!important;
+}
+.app-page .lab-shop-profile small.lab-shop-profile-meta em{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  color:var(--lab-muted-color);
+  font-style:normal;
+  line-height:1.22;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.app-page .lab-shop-records{
+  width:100%;
+  min-height:86px;
+  align-items:center;
+  padding:0 4px!important;
+  border:0;
+  background:transparent;
+  text-align:left;
+}
+.app-page .lab-shop-records span{
+  justify-content:center;
+}
+.settings-group-heading h2{
+  display:none!important;
+}
+.settings-group-heading{
+  min-height:0!important;
+  margin:0 0 8px!important;
+}
+.settings-group-card,
+.settings-top-row,
+.settings-form-row,
+.theme-color-picker,
+.settings-storage-row{
+  border-color:var(--lab-line-color)!important;
+}
+.settings-top-row,
+.settings-form-row,
+.theme-color-picker{
+  border-bottom-width:1px!important;
+  box-shadow:none!important;
+}
+.settings-group-card>*:last-child,
+.settings-group-card>.theme-color-picker:last-child{
+  border-bottom:0!important;
+}
+.theme-color-picker{
+  padding:14px!important;
+}
+.theme-color-picker>div{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:9px!important;
+}
+.theme-color-picker button{
+  display:inline-flex!important;
+  flex:0 1 auto!important;
+  grid-template-columns:none!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:38px!important;
+  padding:7px 14px!important;
+  border:1.5px solid color-mix(in srgb,var(--lab-muted-color),transparent 28%)!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.68)!important;
+  color:var(--lab-text-color)!important;
+  font-size:.86rem!important;
+  font-weight:720!important;
+  white-space:nowrap!important;
+}
+.theme-color-picker button.active{
+  border-color:var(--lab-accent-color)!important;
+  background:color-mix(in srgb,var(--lab-accent-color),#fff 74%)!important;
+  color:var(--lab-text-color)!important;
+}
+.theme-color-picker button>i{
+  width:16px!important;
+  height:16px!important;
+  margin-right:2px;
+}
+.theme-preset-picker{
+  border-bottom:1px solid var(--lab-line-color)!important;
+}
+.theme-preset-picker button{
+  gap:8px!important;
+}
+.theme-preset-picker button b{
+  font-weight:760;
+}
+.theme-preset-dots{
+  display:inline-flex;
+  align-items:center;
+  margin-right:0;
+}
+.theme-preset-dots i{
+  width:13px!important;
+  height:13px!important;
+  margin-left:-3px;
+  border:1.5px solid #fff!important;
+  border-radius:999px;
+}
+.theme-preset-dots i:first-child{
+  margin-left:0;
+}
+.settings-shop-bg-editor{
+  display:grid;
+  gap:10px;
+  padding:14px;
+  border-bottom:1px solid var(--lab-line-color);
+}
+.settings-shop-bg-editor>p{
+  color:var(--lab-muted-color);
+  font-size:.78rem;
+  font-weight:760;
+}
+.settings-shop-bg-editor .theme-color-picker{
+  margin:-4px -14px 0;
+  border-bottom:0!important;
+}
+.materials-compact-toolbar{
+  grid-template-columns:minmax(0,1fr) auto!important;
+}
+.materials-compact-toolbar .secondary-button{
+  justify-content:flex-start;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.material-gallery-production button{
+  min-height:132px!important;
+}
