@@ -1,10 +1,9 @@
-import { CafeScene } from "./cafe-scene";
+import { CafeRoot } from "@/features/cafe/screens/cafe-root";
 
 export function CafePreview() {
   return (
-    <div className="lab-cafe-preview">
-      <CafeScene />
+    <div>
+      <CafeRoot compact />
     </div>
   );
 }
-

@@ -37,6 +37,12 @@ npm run dev
 
 RecaLoopはSupabaseの実データのみを表示します。Supabase環境変数が未設定、または取得に失敗した場合は組み込みデータへ切り替えず、画面にエラーを表示します。
 
+## UI実装ルール
+
+UIを追加・変更する場合は、先に`UI_STRUCTURE_GUIDE.md`を確認してください。今後の画面・コンポーネントは、TSXとSCSS Modulesの対応が追いやすい構造、役割が分かるclass名、最小限のグローバルスタイルを基本にします。
+
+Codexや開発者向けの継続ルールは`AGENTS.md`にも記載しています。
+
 ## Supabase
 
 新しいSupabaseプロジェクトのSQL Editorで、番号順にすべて実行します。

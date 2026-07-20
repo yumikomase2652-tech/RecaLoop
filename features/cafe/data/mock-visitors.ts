@@ -1,0 +1,41 @@
+import type { CafeVisitor } from "../types/cafe";
+
+export const cafeVisitors: CafeVisitor[] = [
+  {
+    id: "mugi",
+    name: "むぎ",
+    description: "丸テーブルの近くに座るのが好きな常連さん。",
+    imageKey: "visitor-mugi",
+    rarity: "common",
+    preferredItemIds: ["round-table"],
+    preferredTags: ["table", "coffee"],
+    rewardCoinsMin: 8,
+    rewardCoinsMax: 18,
+    visitDurationMinutes: 45,
+  },
+  {
+    id: "sumire",
+    name: "すみれ",
+    description: "本と静かな席が好きなお客さん。",
+    imageKey: "visitor-sumire",
+    rarity: "common",
+    preferredItemIds: ["reading-chair"],
+    preferredTags: ["book", "cozy"],
+    rewardCoinsMin: 12,
+    rewardCoinsMax: 24,
+    visitDurationMinutes: 60,
+  },
+  {
+    id: "kohaku",
+    name: "こはく",
+    description: "グリーンのあるCafeに低確率で現れます。",
+    imageKey: "visitor-kohaku",
+    rarity: "rare",
+    preferredItemIds: ["window-plant", "sofa-bench"],
+    preferredTags: ["green", "rare"],
+    rewardCoinsMin: 30,
+    rewardCoinsMax: 60,
+    visitDurationMinutes: 90,
+    specialGiftId: "pressed-leaf",
+  },
+];
