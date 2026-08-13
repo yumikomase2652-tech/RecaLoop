@@ -45,6 +45,7 @@ export function CafeScene({ mode, theme, slotLayoutId, placements, visits = [], 
       <div className={styles.backgroundLayer} />
       <div className={styles.wallLayer}>
         <span className={styles.window} />
+        <span className={styles.lamp} />
         <span className={styles.wallTrim} />
       </div>
       <div className={styles.backLayer}>

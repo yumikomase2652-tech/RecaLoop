@@ -105,7 +105,6 @@ features/
   cafe/
     components/
       cafe-scene.tsx             # Cafe Scene共通描画（full / preview / editor）
-      cafe-toolbar.tsx           # Cafe内ナビゲーション
       cafe.module.css            # Cafe画面固有スタイル
     screens/
       cafe-root.tsx              # Cafe Home / Goods / Shop / Visitors / Album / Gifts / Menu
@@ -137,7 +136,7 @@ lib/
 | Study | `components/personal-app.tsx` `StudyHub` | `app/globals.css` | `study-hub-ios`, `study-lab-screen`, `compact-actions` | `StudyActionGrid`, `StudyActionCard` | `UiSection` |
 | Calendar | `components/personal-app.tsx` `CalendarView` | `app/globals.css` | `calendar-titlebar`, `calendar-month`, `calendar-month-grid`, `calendar-actions` | `SelectableTargetTree`, `DateInput` | bottom sheet風UI |
 | Summary | `components/personal-app.tsx` `ProgressHubFixed` | `app/globals.css` | `summary-screen`, `summary-section`, `summary-metrics`, `summary-placeholder` | `Metric`, `LearningHeatmap` | なし |
-| Cafe | `components/personal-app.tsx` `CafeHub`, `features/cafe/screens/cafe-root.tsx` | `features/cafe/components/cafe.module.css` | `root`, `screenShell`, `sceneFrame`, `toolbar`, `itemGrid` | `CafeScene`, `CafeToolbar`, `useCafeState` | なし |
+| Cafe | `components/personal-app.tsx` `CafeHub`, `features/cafe/screens/cafe-root.tsx` | `features/cafe/components/cafe.module.css` | `root`, `screenShell`, `sceneFrame`, `quickStrip`, `itemGrid` | `CafeScene`, `useCafeState` | なし |
 | Settings | `components/personal-app.tsx` `SettingsView` | `app/globals.css` | `settings-ios`, `settings-group`, `settings-group-card`, `settings-top-row`, `settings-form-row` | `SettingsGroup`, `SettingsNavRow`, `ThemePresetPicker`, `ThemeColorPicker`, `LocalStoragePanel` | なし |
 | Notifications | `components/personal-app.tsx` `NoticesView` and `SettingsNotices` | `app/globals.css` | `notices-screen`, `notice-list`, `settings-notice-list`, `roadmap-panel` | `PageTitle`, `SettingsGroup` | なし |
 | 教材一覧 | `components/personal-app.tsx` `DeckList` | `app/globals.css` | `materials-ios`, `materials-nav`, `materials-compact-toolbar`, `material-gallery-production`, `deck-list-ios` | bottom sheet, `BookOpen` icon | なし |
@@ -226,8 +225,7 @@ PersonalApp
       ├─ VisitorsScreen
       ├─ AlbumScreen
       ├─ GiftsScreen
-      ├─ MenuScreen
-      └─ CafeToolbar
+      └─ MenuScreen
 ```
 
 ## 6. 共通コンポーネント一覧
@@ -246,7 +244,6 @@ PersonalApp
 | `ShopCard` | `components/cafe/shop-card.tsx` | `app/globals.css` `lab-shop-*` | Home | ショップカード | Home最上部、プロフィール導線 |
 | `CafePreview` | `components/cafe/cafe-preview.tsx` | `features/cafe/components/cafe.module.css` | ShopCard | Cafe入口プレビュー | HomeのCafeビジュアル |
 | `CafeScene` | `features/cafe/components/cafe-scene.tsx` | `features/cafe/components/cafe.module.css` | Home ShopCard / Cafe / Goods | Cafeレイヤー描画 | Cafe画面とHomeプレビュー |
-| `CafeToolbar` | `features/cafe/components/cafe-toolbar.tsx` | `features/cafe/components/cafe.module.css` | Cafe | Cafe内タブ | Cafeタブ内の画面遷移 |
 | `StudyActionGrid` | `components/study/study-action-grid.tsx` | `app/globals.css` `lab-study-action-grid` | Home / Study | 2列アクション | Home/Studyの主操作 |
 | `StudyActionCard` | `components/study/study-action-card.tsx` | `app/globals.css` `lab-study-action*` | Home / Study | アクションカード | 2列カード全般 |
 | `MaterialGalleryCard` | `components/study/material-gallery-card.tsx` | `app/globals.css` `lab-material-gallery-card` | UI Lab / 将来教材 | 教材ギャラリー | 教材カード |

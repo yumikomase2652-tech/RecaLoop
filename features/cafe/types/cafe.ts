@@ -71,6 +71,14 @@ export type CafeVisitor = {
   specialGiftId?: string;
 };
 
+export type CafeGift = {
+  id: string;
+  name: string;
+  description: string;
+  imageKey: string;
+  fromVisitorId?: string;
+};
+
 export type CafeVisit = {
   id: string;
   visitorId: string;

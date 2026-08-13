@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ElementType } from "react";
-import { ChevronRight, Gift, Images, PackageOpen, Paintbrush, Plus, ShoppingBag, Sparkles, Store, Users } from "lucide-react";
+import type { ElementType, ReactNode } from "react";
+import { Camera, ChevronLeft, ChevronRight, Gift, Images, PackageOpen, Paintbrush, Plus, RotateCcw, ShoppingBag, Sparkles, Store, Users } from "lucide-react";
 import { CafeScene } from "../components/cafe-scene";
-import { CafeToolbar } from "../components/cafe-toolbar";
 import styles from "../components/cafe.module.css";
 import { cafeGifts } from "../data/mock-gifts";
 import { cafeItems } from "../data/mock-items";
@@ -46,13 +45,12 @@ export function CafeRoot({ compact = false }: CafeRootProps) {
   return (
     <div className={styles.root}>
       {screen === "home" && <CafeHomeScreen cafe={cafe} setScreen={setScreen} />}
-      {screen === "goods" && <GoodsScreen cafe={cafe} />}
-      {screen === "shop" && <ShopScreen cafe={cafe} />}
-      {screen === "visitors" && <VisitorsScreen cafe={cafe} />}
-      {screen === "album" && <AlbumScreen cafe={cafe} />}
-      {screen === "gifts" && <GiftsScreen cafe={cafe} />}
+      {screen === "goods" && <GoodsScreen cafe={cafe} back={() => setScreen("home")} />}
+      {screen === "shop" && <ShopScreen cafe={cafe} back={() => setScreen("home")} />}
+      {screen === "visitors" && <VisitorsScreen cafe={cafe} back={() => setScreen("home")} />}
+      {screen === "album" && <AlbumScreen cafe={cafe} back={() => setScreen("home")} />}
+      {screen === "gifts" && <GiftsScreen cafe={cafe} back={() => setScreen("home")} />}
       {screen === "menu" && <MenuScreen cafe={cafe} setScreen={setScreen} />}
-      <CafeToolbar screen={screen} setScreen={setScreen} />
     </div>
   );
 }
@@ -62,6 +60,7 @@ type CafeHook = ReturnType<typeof useCafeState>;
 function CafeHomeScreen({ cafe, setScreen }: { cafe: CafeHook; setScreen: (screen: CafeScreen) => void }) {
   const active = cafe.currentVisits.length;
   const claimable = cafe.claimableVisits.length;
+  const latestClaim = cafe.claimableVisits[0];
 
   return (
     <div className={styles.screenShell}>
@@ -79,12 +78,23 @@ function CafeHomeScreen({ cafe, setScreen }: { cafe: CafeHook; setScreen: (scree
         placements={cafe.state.placements}
         visits={cafe.currentVisits}
       />
+      <div className={styles.quickStrip}>
+        <button type="button" onClick={() => setScreen("goods")}><PackageOpen size={18} /> グッズ</button>
+        <button type="button" onClick={() => setScreen("shop")}><ShoppingBag size={18} /> お店</button>
+        <button type="button" onClick={() => setScreen("visitors")}><Users size={18} /> お客さん</button>
+        <button type="button" onClick={() => setScreen("album")}><Camera size={18} /> 写真</button>
+      </div>
       <section className={styles.card}>
         <div className={styles.summaryGrid}>
           <span className={styles.summaryTile}><span>来店中</span><b>{active}</b></span>
           <span className={styles.summaryTile}><span>受取待ち</span><b>{claimable}</b></span>
           <span className={styles.summaryTile}><span>設置中</span><b>{cafe.state.placements.length}</b></span>
         </div>
+        {latestClaim && (
+          <p className={styles.rewardNotice}>
+            {cafeVisitors.find((visitor) => visitor.id === latestClaim.visitorId)?.name || "お客さん"}が {latestClaim.rewardCoins} coin を残しています。
+          </p>
+        )}
         <div className={styles.buttonRow} style={{ marginTop: 14 }}>
           <button className={styles.primaryButton} type="button" disabled={!claimable} onClick={() => cafe.claimRewards()}>
             コインをまとめて受け取る
@@ -106,7 +116,20 @@ function CafeHomeScreen({ cafe, setScreen }: { cafe: CafeHook; setScreen: (scree
   );
 }
 
-function GoodsScreen({ cafe }: { cafe: CafeHook }) {
+function ScreenHeader({ title, subtitle, action, back }: { title: string; subtitle?: string; action?: ReactNode; back: () => void }) {
+  return (
+    <div className={styles.subBar}>
+      <button className={styles.backButton} type="button" onClick={back} aria-label="Cafeへ戻る"><ChevronLeft size={22} /></button>
+      <div>
+        <h2>{title}</h2>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+      <span>{action}</span>
+    </div>
+  );
+}
+
+function GoodsScreen({ cafe, back }: { cafe: CafeHook; back: () => void }) {
   const [draft, setDraft] = useState<CafePlacement[]>(cafe.state.placements);
   const [selectedSlot, setSelectedSlot] = useState<CafeSlot | null>(null);
   const owned = cafe.ownedItems;
@@ -125,13 +148,7 @@ function GoodsScreen({ cafe }: { cafe: CafeHook }) {
 
   return (
     <div className={styles.screenShell}>
-      <div className={styles.subBar}>
-        <div>
-          <h2>Goods</h2>
-          <p>スロットを選んで、所持品を配置します。</p>
-        </div>
-        <button className={styles.primaryButton} type="button" onClick={() => cafe.savePlacements(draft)}>保存</button>
-      </div>
+      <ScreenHeader title="Goods" subtitle="スロットを選んで配置します。" back={back} action={<button className={styles.primaryButton} type="button" onClick={() => cafe.savePlacements(draft)}>保存</button>} />
       <CafeScene
         mode="editor"
         theme={cafe.activeTheme}
@@ -166,8 +183,9 @@ function GoodsScreen({ cafe }: { cafe: CafeHook }) {
   );
 }
 
-function ShopScreen({ cafe }: { cafe: CafeHook }) {
+function ShopScreen({ cafe, back }: { cafe: CafeHook; back: () => void }) {
   const [message, setMessage] = useState("");
+  const [shopTab, setShopTab] = useState<"items" | "themes" | "expansion">("items");
   const buy = (label: string, run: () => string) => {
     if (typeof window !== "undefined" && !window.confirm(`${label}を購入/切り替えしますか？`)) return;
     const error = run();
@@ -176,15 +194,14 @@ function ShopScreen({ cafe }: { cafe: CafeHook }) {
 
   return (
     <div className={styles.screenShell}>
-      <div className={styles.topBar}>
-        <div>
-          <h1>Shop</h1>
-          <p>家具・テーマ・拡張をコインで増やします。</p>
-        </div>
-        <span className={styles.coinPill}>coin {cafe.state.coins}</span>
-      </div>
+      <ScreenHeader title="Shop" subtitle="家具・テーマ・拡張を増やします。" back={back} action={<span className={styles.coinPill}>coin {cafe.state.coins}</span>} />
       {message && <p className={styles.empty}>{message}</p>}
-      <section className={styles.card}>
+      <div className={styles.tabs} role="tablist" aria-label="Shop category">
+        <button className={styles.tab} data-active={shopTab === "items"} type="button" onClick={() => setShopTab("items")}>家具・メニュー</button>
+        <button className={styles.tab} data-active={shopTab === "themes"} type="button" onClick={() => setShopTab("themes")}>テーマ</button>
+        <button className={styles.tab} data-active={shopTab === "expansion"} type="button" onClick={() => setShopTab("expansion")}>拡張</button>
+      </div>
+      {shopTab === "items" && <section className={styles.card}>
         <h2 style={{ margin: 0, fontSize: 17 }}>家具・メニュー</h2>
         <div className={styles.itemGrid} style={{ marginTop: 12 }}>
           {cafeItems.map((item) => {
@@ -203,8 +220,8 @@ function ShopScreen({ cafe }: { cafe: CafeHook }) {
             );
           })}
         </div>
-      </section>
-      <section className={styles.card}>
+      </section>}
+      {shopTab === "themes" && <section className={styles.card}>
         <h2 style={{ margin: 0, fontSize: 17 }}>Cafeテーマ</h2>
         <div className={styles.itemGrid} style={{ marginTop: 12 }}>
           {cafeThemes.map((theme) => (
@@ -220,8 +237,8 @@ function ShopScreen({ cafe }: { cafe: CafeHook }) {
             </article>
           ))}
         </div>
-      </section>
-      <section className={styles.card}>
+      </section>}
+      {shopTab === "expansion" && <section className={styles.card}>
         <h2 style={{ margin: 0, fontSize: 17 }}>Cafe拡張</h2>
         <div className={styles.itemGrid} style={{ marginTop: 12 }}>
           {cafeExpansions.map((expansion) => (
@@ -237,22 +254,18 @@ function ShopScreen({ cafe }: { cafe: CafeHook }) {
             </article>
           ))}
         </div>
-      </section>
+      </section>}
     </div>
   );
 }
 
-function VisitorsScreen({ cafe }: { cafe: CafeHook }) {
+function VisitorsScreen({ cafe, back }: { cafe: CafeHook; back: () => void }) {
   const seen = new Set(cafe.state.visits.map((visit) => visit.visitorId));
+  const visitCounts = new Map<string, number>();
+  cafe.state.visits.forEach((visit) => visitCounts.set(visit.visitorId, (visitCounts.get(visit.visitorId) || 0) + 1));
   return (
     <div className={styles.screenShell}>
-      <div className={styles.topBar}>
-        <div>
-          <h1>Visitors</h1>
-          <p>来店中・履歴・図鑑を確認します。</p>
-        </div>
-        <button className={styles.primaryButton} type="button" disabled={!cafe.claimableVisits.length} onClick={() => cafe.claimRewards()}>一括受取</button>
-      </div>
+      <ScreenHeader title="Visitors" subtitle="来店中・履歴・図鑑です。" back={back} action={<button className={styles.primaryButton} type="button" disabled={!cafe.claimableVisits.length} onClick={() => cafe.claimRewards()}>一括受取</button>} />
       <section className={styles.card}>
         <h2 style={{ margin: 0, fontSize: 17 }}>現在来店中</h2>
         {cafe.currentVisits.length ? cafe.currentVisits.map((visit) => <VisitRow key={visit.id} visit={visit} />) : <p className={styles.empty}>今は静かなCafeです。</p>}
@@ -268,7 +281,7 @@ function VisitorsScreen({ cafe }: { cafe: CafeHook }) {
             <span className={styles.avatarDot}>{seen.has(visitor.id) ? visitor.name.slice(0, 1) : "?"}</span>
             <span>
               <b>{seen.has(visitor.id) ? visitor.name : "未来のお客さん"}</b>
-              <p className={styles.visitMeta}>{seen.has(visitor.id) ? visitor.description : "Cafeに来ると記録されます。"}</p>
+              <p className={styles.visitMeta}>{seen.has(visitor.id) ? `${visitor.description} ・ 来店 ${visitCounts.get(visitor.id) || 0}回` : "Cafeに来ると記録されます。"}</p>
             </span>
           </div>
         ))}
@@ -293,15 +306,10 @@ function VisitRow({ visit, rewardAction }: { visit: { visitorId: string; usedIte
   );
 }
 
-function AlbumScreen({ cafe }: { cafe: CafeHook }) {
+function AlbumScreen({ cafe, back }: { cafe: CafeHook; back: () => void }) {
   return (
     <div className={styles.screenShell}>
-      <div className={styles.topBar}>
-        <div>
-          <h1>Album</h1>
-          <p>Cafeの思い出を保存していく場所です。</p>
-        </div>
-      </div>
+      <ScreenHeader title="Album" subtitle="Cafeの思い出を保存していく場所です。" back={back} />
       <CafeScene mode="preview" theme={cafe.activeTheme} slotLayoutId={cafe.activeExpansion.slotLayoutId} placements={cafe.state.placements} visits={cafe.currentVisits} />
       <div className={styles.itemGrid}>
         {cafe.state.albumPhotos.map((photo) => (
@@ -318,25 +326,21 @@ function AlbumScreen({ cafe }: { cafe: CafeHook }) {
   );
 }
 
-function GiftsScreen({ cafe }: { cafe: CafeHook }) {
+function GiftsScreen({ cafe, back }: { cafe: CafeHook; back: () => void }) {
   return (
     <div className={styles.screenShell}>
-      <div className={styles.topBar}>
-        <div>
-          <h1>Gifts</h1>
-          <p>お客さんからの思い出の品です。</p>
-        </div>
-      </div>
+      <ScreenHeader title="Gifts" subtitle="お客さんからの思い出の品です。" back={back} />
       <div className={styles.itemGrid}>
         {cafeGifts.map((gift) => {
           const owned = cafe.state.gifts.includes(gift.id);
+          const visitor = gift.fromVisitorId ? cafeVisitors.find((item) => item.id === gift.fromVisitorId) : null;
           return (
             <article className={styles.itemCard} key={gift.id}>
               <span className={styles.itemTop}>
                 <b>{owned ? gift.name : "未受取のプレゼント"}</b>
                 <span className={styles.price}>{owned ? "受取済み" : "未発見"}</span>
               </span>
-              <p>{owned ? gift.description : "特定のお客さんが置いていくことがあります。"}</p>
+              <p>{owned ? gift.description : `${visitor?.name || "お客さん"}が置いていくことがあります。`}</p>
             </article>
           );
         })}
@@ -356,12 +360,7 @@ function MenuScreen({ cafe, setScreen }: { cafe: CafeHook; setScreen: (screen: C
 
   return (
     <div className={styles.screenShell}>
-      <div className={styles.topBar}>
-        <div>
-          <h1>Menu</h1>
-          <p>Cafeの管理メニューです。</p>
-        </div>
-      </div>
+      <ScreenHeader title="Menu" subtitle="Cafeの管理メニューです。" back={() => setScreen("home")} />
       <section className={styles.card}>
         {rows.map(({ label, value, action, icon: Icon }) => (
           <button className={styles.visitRow} key={label} type="button" onClick={action}>
@@ -373,6 +372,14 @@ function MenuScreen({ cafe, setScreen }: { cafe: CafeHook; setScreen: (screen: C
             <ChevronRight size={18} />
           </button>
         ))}
+        <button className={styles.visitRow} type="button" onClick={() => cafe.resetCafe()}>
+          <span className={styles.avatarDot}><RotateCcw size={20} /></span>
+          <span>
+            <b>リセット</b>
+            <p className={styles.visitMeta}>Phase 1のCafe状態を初期化</p>
+          </span>
+          <ChevronRight size={18} />
+        </button>
       </section>
     </div>
   );

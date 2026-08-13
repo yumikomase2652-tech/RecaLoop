@@ -24,6 +24,7 @@ export const cafeVisitors: CafeVisitor[] = [
     rewardCoinsMin: 12,
     rewardCoinsMax: 24,
     visitDurationMinutes: 60,
+    specialGiftId: "blue-ticket",
   },
   {
     id: "kohaku",

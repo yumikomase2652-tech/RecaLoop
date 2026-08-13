@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { defaultCafeState } from "../data/default-state";
+import { cafeGifts } from "../data/mock-gifts";
 import { cafeExpansions, cafeThemes } from "../data/mock-themes";
 import { cafeItems } from "../data/mock-items";
 import { cafeVisitors } from "../data/mock-visitors";
-import type { CafePlacement, CafeState, CafeVisit } from "../types/cafe";
+import type { CafeAlbumPhoto, CafePlacement, CafeState, CafeVisit } from "../types/cafe";
 
 const storageKey = "recaloop-cafe-state-v1";
 const stateEvent = "recaloop-cafe-state";
@@ -58,10 +59,14 @@ function rewardFor(visitorId: string, seed: string) {
 
 function eligibleVisitors(state: CafeState) {
   const itemIds = new Set(state.placements.map((placement) => placement.itemId));
+  const placedItems = state.placements
+    .map((placement) => cafeItems.find((item) => item.id === placement.itemId))
+    .filter(Boolean);
+  const tags = new Set(placedItems.flatMap((item) => item?.visitorTags || []));
   return cafeVisitors.filter((visitor) => {
     if (visitor.unlockCondition?.requiredExpansionId && state.activeExpansionId !== visitor.unlockCondition.requiredExpansionId) return false;
-    if (!visitor.preferredItemIds.length) return true;
-    return visitor.preferredItemIds.some((id) => itemIds.has(id));
+    if (visitor.preferredItemIds.some((id) => itemIds.has(id))) return true;
+    return visitor.preferredTags.some((tag) => tags.has(tag));
   });
 }
 
@@ -100,8 +105,40 @@ function simulateVisits(input: CafeState) {
   return {
     ...input,
     visits: [...nextVisits, ...input.visits].slice(0, 80),
+    albumPhotos: createVisitPhotos(input, nextVisits),
     lastVisitSimulationAt: new Date(now).toISOString(),
   };
+}
+
+function createVisitPhotos(state: CafeState, visits: CafeVisit[]): CafeAlbumPhoto[] {
+  if (!visits.length) return state.albumPhotos;
+  const existing = new Set(state.albumPhotos.map((photo) => photo.id));
+  const photos = visits
+    .filter((visit, index) => index < 2)
+    .map((visit) => ({
+      id: `photo-${visit.id}`,
+      title: "来店の記録",
+      createdAt: visit.startedAt,
+      visitorIds: [visit.visitorId],
+      themeId: state.activeThemeId,
+    }))
+    .filter((photo) => !existing.has(photo.id));
+  return [...photos, ...state.albumPhotos].slice(0, 80);
+}
+
+function giftsFromClaimedVisits(current: CafeState, visits: CafeVisit[]) {
+  const owned = new Set(current.gifts);
+  const next = new Set(current.gifts);
+  visits.forEach((visit) => {
+    const visitor = cafeVisitors.find((candidate) => candidate.id === visit.visitorId);
+    if (!visitor?.specialGiftId || owned.has(visitor.specialGiftId)) return;
+    const seed = seededNumber(`${visit.id}:${visitor.specialGiftId}`);
+    const rareEnough = visitor.rarity === "rare" ? seed % 3 === 0 : seed % 8 === 0;
+    if (rareEnough && cafeGifts.some((gift) => gift.id === visitor.specialGiftId)) {
+      next.add(visitor.specialGiftId);
+    }
+  });
+  return [...next];
 }
 
 export function useCafeState() {
@@ -186,14 +223,21 @@ export function useCafeState() {
     const allowed = new Set(visitIds);
     commit((current) => {
       let gained = 0;
+      const claimedVisits: CafeVisit[] = [];
       const visits = current.visits.map((visit) => {
         const target = !visit.rewardClaimedAt && new Date(visit.endedAt).getTime() <= Date.now() && (!visitIds || allowed.has(visit.id));
         if (!target) return visit;
         gained += visit.rewardCoins;
-        return { ...visit, rewardClaimedAt: new Date().toISOString() };
+        const nextVisit = { ...visit, rewardClaimedAt: new Date().toISOString() };
+        claimedVisits.push(nextVisit);
+        return nextVisit;
       });
-      return { ...current, coins: current.coins + gained, visits };
+      return { ...current, coins: current.coins + gained, visits, gifts: giftsFromClaimedVisits(current, claimedVisits) };
     });
+  }, [commit]);
+
+  const resetCafe = useCallback(() => {
+    commit(() => defaultCafeState);
   }, [commit]);
 
   const switchTheme = useCallback((themeId: string) => {
@@ -219,5 +263,6 @@ export function useCafeState() {
     claimRewards,
     switchTheme,
     switchExpansion,
+    resetCafe,
   };
 }
