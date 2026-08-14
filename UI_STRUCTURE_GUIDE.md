@@ -105,6 +105,7 @@ features/
   cafe/
     components/
       cafe-scene.tsx             # Cafe Scene共通描画（full / preview / editor）
+      cafe-sprites.tsx           # Cafe内の家具・来店キャラのオリジナルSVG素材
       cafe.module.css            # Cafe画面固有スタイル
     screens/
       cafe-root.tsx              # Cafe Home / Goods / Shop / Visitors / Album / Gifts / Menu
@@ -134,15 +135,16 @@ lib/
 | --- | --- | --- | --- | --- | --- |
 | Home | `components/personal-app.tsx` `HomeView` | `app/globals.css` | `ios-screen`, `home-ios`, `home-shop-wrap`, `home-study-actions` | `ShopCard`, `StudyActionCard`, `StudyShareSheet` | `UiSection` |
 | Study | `components/personal-app.tsx` `StudyHub` | `app/globals.css` | `study-hub-ios`, `study-lab-screen`, `compact-actions` | `StudyActionGrid`, `StudyActionCard` | `UiSection` |
+| Timer | `features/timer/components/study-timer.tsx` | `features/timer/components/study-timer.module.css` | `screen`, `timerCard`, `controls` | `CafeRoot compact` | なし |
 | Calendar | `components/personal-app.tsx` `CalendarView` | `app/globals.css` | `calendar-titlebar`, `calendar-month`, `calendar-month-grid`, `calendar-actions` | `SelectableTargetTree`, `DateInput` | bottom sheet風UI |
 | Summary | `components/personal-app.tsx` `ProgressHubFixed` | `app/globals.css` | `summary-screen`, `summary-section`, `summary-metrics`, `summary-placeholder` | `Metric`, `LearningHeatmap` | なし |
-| Cafe | `components/personal-app.tsx` `CafeHub`, `features/cafe/screens/cafe-root.tsx` | `features/cafe/components/cafe.module.css` | `root`, `screenShell`, `sceneFrame`, `quickStrip`, `itemGrid` | `CafeScene`, `useCafeState` | なし |
+| Cafe | `components/personal-app.tsx` `CafeHub`, `features/cafe/screens/cafe-root.tsx` | `features/cafe/components/cafe.module.css` | `root`, `immersiveHome`, `scenePager`, `menuPanel`, `sceneFrame` | `CafeScene`, `CafeItemSprite`, `CafeVisitorSprite`, `useCafeState` | なし |
 | Settings | `components/personal-app.tsx` `SettingsView` | `app/globals.css` | `settings-ios`, `settings-group`, `settings-group-card`, `settings-top-row`, `settings-form-row` | `SettingsGroup`, `SettingsNavRow`, `ThemePresetPicker`, `ThemeColorPicker`, `LocalStoragePanel` | なし |
 | Notifications | `components/personal-app.tsx` `NoticesView` and `SettingsNotices` | `app/globals.css` | `notices-screen`, `notice-list`, `settings-notice-list`, `roadmap-panel` | `PageTitle`, `SettingsGroup` | なし |
 | 教材一覧 | `components/personal-app.tsx` `DeckList` | `app/globals.css` | `materials-ios`, `materials-nav`, `materials-compact-toolbar`, `material-gallery-production`, `deck-list-ios` | bottom sheet, `BookOpen` icon | なし |
 | 復習画面 | `components/personal-app.tsx` `ReviewView` | `app/globals.css` | `review-hero`, `rating-grid`, `check-toggle` | `RatingEditor`, `SelectableTargetTree` | なし |
 | 予定に取り組む画面 | `components/personal-app.tsx` study session state | `app/globals.css` | `study-context`, `rating-grid`, `check-toggle` | `RatingEditor`, media viewer | なし |
-| タイマー画面 | `components/personal-app.tsx` `StudyHub`から遷移する`study` view | `app/globals.css` | `study-hub-ios`, `lab-study-action-grid` | `StudyActionGrid` | `UiSection` |
+| タイマー画面 | `features/timer/components/study-timer.tsx` | `features/timer/components/study-timer.module.css` | `screen`, `timerCard`, `segmented`, `controls` | `CafeRoot compact` | なし |
 | ログイン | `app/login/page.tsx` | `app/globals.css` | `auth-page`, `auth-panel`, `brand`, `field` | Supabase Auth | なし |
 | 初回設定 | `components/personal-app.tsx` `OnboardingModal` | `app/globals.css` | `onboarding-backdrop`, `onboarding-panel`, `select-field` | `SchoolPicker` | なし |
 | .recaloop作成 | `app/deck-builder/page.tsx` | Tailwind className中心 | `min-h-screen`, `rounded-3xl`など | `createStoredZipStable` | なし |
@@ -164,7 +166,6 @@ PersonalApp
    │     │  ├─ lab-shop-divider
    │     │  └─ CafePreview
    │     │     └─ CafeScene
-   │     └─ home-share-button
    ├─ UiSection
    │  └─ home-study-actions
    │     ├─ StudyActionCard 今日の予定
@@ -215,9 +216,14 @@ PersonalApp
 └─ CafeHub
    └─ CafeRoot
       ├─ CafeHomeScreen
-      │  ├─ CafeScene mode="full"
-      │  ├─ summaryGrid
-      │  └─ navGrid
+      │  ├─ cafeHud
+      │  │  ├─ hamburgerButton
+      │  │  └─ coinPill
+      │  ├─ scenePager 横スクロール2面
+      │  │  ├─ CafeScene mode="full"
+      │  │  └─ CafeScene mode="full" + receiptPanel
+      │  └─ menuOverlay
+      │     └─ menuGrid
       ├─ GoodsScreen
       │  ├─ CafeScene mode="editor"
       │  └─ owned item picker

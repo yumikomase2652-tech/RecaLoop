@@ -1,4 +1,4 @@
-import { ChevronRight, Coffee, BookOpen } from "lucide-react";
+import { ChevronRight, Coffee, BookOpen, ReceiptText } from "lucide-react";
 import { CafePreview } from "./cafe-preview";
 
 type ShopCardProps = {
@@ -34,6 +34,7 @@ export function ShopCard({ nickname, handle, grade, minutes, questions, avatar, 
       </button>
       <span className="lab-shop-divider" />
       <button className="lab-shop-records" onClick={onStatsClick} type="button">
+        <span className="lab-shop-receipt"><ReceiptText size={17} /> レシート</span>
         <span><Coffee size={18} /> 今日 {minutes}</span>
         <span><BookOpen size={18} /> 今日 {questions}</span>
       </button>

@@ -5,6 +5,171 @@
   color: var(--color-text, #17334a);
 }
 
+.immersiveHome {
+  position: relative;
+  min-height: min(650px, calc(100dvh - 150px));
+  overflow: hidden;
+  border-radius: 34px;
+  background: color-mix(in srgb, var(--color-base, #f8f3ea), #ffffff 35%);
+  border: 1px solid rgba(23, 51, 74, 0.08);
+}
+
+.cafeHud {
+  position: absolute;
+  z-index: 20;
+  top: max(12px, env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.hamburgerButton,
+.menuHeader button {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: #17334a;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(23, 51, 74, 0.08);
+  box-shadow: 0 10px 22px rgba(23, 51, 74, 0.08);
+  pointer-events: auto;
+}
+
+.cafeHud .coinPill {
+  pointer-events: auto;
+  box-shadow: 0 10px 22px rgba(23, 51, 74, 0.08);
+}
+
+.scenePager {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  width: 100%;
+  height: min(650px, calc(100dvh - 150px));
+  min-height: 520px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.scenePager::-webkit-scrollbar {
+  display: none;
+}
+
+.scenePage {
+  position: relative;
+  min-width: 0;
+  scroll-snap-align: start;
+  padding: 0;
+}
+
+.scenePage .sceneFrame {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.receiptPanel {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: 28px minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 10px;
+  min-height: 72px;
+  padding: 13px 16px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.84);
+  color: #17334a;
+  border: 1px solid rgba(23, 51, 74, 0.08);
+}
+
+.receiptPanel span,
+.receiptPanel small {
+  color: #718398;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.receiptPanel small {
+  grid-column: 2 / -1;
+}
+
+.rewardFloatingButton {
+  position: absolute;
+  z-index: 18;
+  left: 18px;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  min-height: 50px;
+  border-radius: 999px;
+  background: #17334a;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  box-shadow: 0 14px 26px rgba(23, 51, 74, 0.16);
+}
+
+.menuOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+}
+
+.menuScrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(23, 33, 40, 0.18);
+}
+
+.menuPanel {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: max(68px, calc(env(safe-area-inset-top) + 62px));
+  padding: 14px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(23, 51, 74, 0.08);
+  box-shadow: 0 24px 42px rgba(23, 51, 74, 0.16);
+}
+
+.menuHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px 12px;
+  color: #17334a;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.menuHeader button {
+  width: 38px;
+  height: 38px;
+  box-shadow: none;
+}
+
+.menuGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .screenShell {
   display: grid;
   gap: 16px;
@@ -76,6 +241,13 @@
   border: 1px solid rgba(23, 51, 74, 0.08);
   box-shadow: 0 18px 40px rgba(23, 51, 74, 0.08);
   isolation: isolate;
+}
+
+.itemVisual svg,
+.visitorVisual svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .sceneFrame[data-mode="preview"] {
@@ -236,7 +408,7 @@
 
 .itemVisual::before,
 .visitorVisual::before {
-  content: "";
+  content: none;
   position: absolute;
   inset: 12%;
   border-radius: inherit;
@@ -563,9 +735,25 @@
     align-items: flex-start;
   }
 
+  .immersiveHome {
+    min-height: calc(100dvh - 132px);
+    border-radius: 0;
+    margin-inline: -16px;
+  }
+
+  .scenePager {
+    height: calc(100dvh - 132px);
+    min-height: 480px;
+  }
+
   .sceneFrame {
     border-radius: 28px;
     min-height: 232px;
+  }
+
+  .scenePage .sceneFrame {
+    border-radius: 0;
+    min-height: 0;
   }
 
   .sceneFrame[data-mode="preview"] {
@@ -573,6 +761,10 @@
   }
 
   .navGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .menuGrid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 

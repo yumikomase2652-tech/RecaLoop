@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ElementType, ReactNode } from "react";
-import { Camera, ChevronLeft, ChevronRight, Gift, Images, PackageOpen, Paintbrush, Plus, RotateCcw, ShoppingBag, Sparkles, Store, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gift, Images, Menu as MenuIcon, PackageOpen, Paintbrush, Plus, ReceiptText, RotateCcw, ShoppingBag, Sparkles, Store, Users, X } from "lucide-react";
 import { CafeScene } from "../components/cafe-scene";
 import styles from "../components/cafe.module.css";
 import { cafeGifts } from "../data/mock-gifts";
@@ -58,60 +58,77 @@ export function CafeRoot({ compact = false }: CafeRootProps) {
 type CafeHook = ReturnType<typeof useCafeState>;
 
 function CafeHomeScreen({ cafe, setScreen }: { cafe: CafeHook; setScreen: (screen: CafeScreen) => void }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const active = cafe.currentVisits.length;
   const claimable = cafe.claimableVisits.length;
   const latestClaim = cafe.claimableVisits[0];
 
   return (
-    <div className={styles.screenShell}>
-      <div className={styles.topBar}>
-        <div>
-          <h1>Cafe</h1>
-          <p>{cafe.activeExpansion.name} ・ {cafe.activeTheme.name}</p>
-        </div>
+    <div className={styles.immersiveHome}>
+      <div className={styles.cafeHud}>
+        <button className={styles.hamburgerButton} type="button" onClick={() => setMenuOpen(true)} aria-label="Cafeメニュー">
+          <MenuIcon size={24} />
+        </button>
         <span className={styles.coinPill}>coin {cafe.state.coins}</span>
       </div>
-      <CafeScene
-        mode="full"
-        theme={cafe.activeTheme}
-        slotLayoutId={cafe.activeExpansion.slotLayoutId}
-        placements={cafe.state.placements}
-        visits={cafe.currentVisits}
-      />
-      <div className={styles.quickStrip}>
-        <button type="button" onClick={() => setScreen("goods")}><PackageOpen size={18} /> グッズ</button>
-        <button type="button" onClick={() => setScreen("shop")}><ShoppingBag size={18} /> お店</button>
-        <button type="button" onClick={() => setScreen("visitors")}><Users size={18} /> お客さん</button>
-        <button type="button" onClick={() => setScreen("album")}><Camera size={18} /> 写真</button>
+      <div className={styles.scenePager} aria-label="Cafe scene pages">
+        <section className={styles.scenePage}>
+          <CafeScene
+            mode="full"
+            theme={cafe.activeTheme}
+            slotLayoutId={cafe.activeExpansion.slotLayoutId}
+            placements={cafe.state.placements}
+            visits={cafe.currentVisits}
+          />
+        </section>
+        <section className={styles.scenePage}>
+          <CafeScene
+            mode="full"
+            theme={cafe.activeTheme}
+            slotLayoutId={cafe.activeExpansion.slotLayoutId}
+            placements={cafe.state.placements}
+            visits={cafe.currentVisits.slice().reverse()}
+          />
+          <div className={styles.receiptPanel}>
+            <ReceiptText size={20} />
+            <b>来店メモ</b>
+            <span>来店中 {active} ・ 受取待ち {claimable} ・ 設置 {cafe.state.placements.length}</span>
+            {latestClaim && <small>{cafeVisitors.find((visitor) => visitor.id === latestClaim.visitorId)?.name || "お客さん"}が {latestClaim.rewardCoins} coin を残しています。</small>}
+          </div>
+        </section>
       </div>
-      <section className={styles.card}>
-        <div className={styles.summaryGrid}>
-          <span className={styles.summaryTile}><span>来店中</span><b>{active}</b></span>
-          <span className={styles.summaryTile}><span>受取待ち</span><b>{claimable}</b></span>
-          <span className={styles.summaryTile}><span>設置中</span><b>{cafe.state.placements.length}</b></span>
+      {claimable > 0 && (
+        <button className={styles.rewardFloatingButton} type="button" onClick={() => cafe.claimRewards()}>
+          {claimable}件のコインを受け取る
+        </button>
+      )}
+      {menuOpen && (
+        <div className={styles.menuOverlay}>
+          <button className={styles.menuScrim} type="button" aria-label="Cafeメニューを閉じる" onClick={() => setMenuOpen(false)} />
+          <section className={styles.menuPanel}>
+            <div className={styles.menuHeader}>
+              <b>Cafe Menu</b>
+              <button type="button" onClick={() => setMenuOpen(false)} aria-label="閉じる"><X size={20} /></button>
+            </div>
+            <div className={styles.menuGrid}>
+              {menuButtons.map(({ id, label, icon: Icon }) => (
+                <button
+                  className={styles.navButton}
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setScreen(id);
+                  }}
+                >
+                  <Icon size={23} />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
         </div>
-        {latestClaim && (
-          <p className={styles.rewardNotice}>
-            {cafeVisitors.find((visitor) => visitor.id === latestClaim.visitorId)?.name || "お客さん"}が {latestClaim.rewardCoins} coin を残しています。
-          </p>
-        )}
-        <div className={styles.buttonRow} style={{ marginTop: 14 }}>
-          <button className={styles.primaryButton} type="button" disabled={!claimable} onClick={() => cafe.claimRewards()}>
-            コインをまとめて受け取る
-          </button>
-          <button className={styles.secondaryButton} type="button" onClick={() => cafe.switchExpansion(cafe.state.activeExpansionId === "tiny-room" ? "wide-room" : "tiny-room")}>
-            初期/拡張を確認
-          </button>
-        </div>
-      </section>
-      <div className={styles.navGrid}>
-        {menuButtons.map(({ id, label, icon: Icon }) => (
-          <button className={styles.navButton} key={id} type="button" onClick={() => setScreen(id)}>
-            <Icon size={22} />
-            {label}
-          </button>
-        ))}
-      </div>
+      )}
     </div>
   );
 }

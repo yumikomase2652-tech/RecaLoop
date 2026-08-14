@@ -3937,8 +3937,9 @@ body{
 
 .app-page .lab-shop-records{
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:10px;
+  grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);
+  gap:8px;
+  align-items:center;
 }
 
 .app-page .lab-shop-records span{
@@ -4090,6 +4091,11 @@ body{
   font-weight:720;
   text-overflow:ellipsis;
   white-space:nowrap;
+}
+
+.app-page .lab-shop-records .lab-shop-receipt{
+  padding-right:2px;
+  color:var(--lab-accent-color);
 }
 
 .app-page .lab-list-main small,
@@ -5499,15 +5505,15 @@ textarea{
 }
 .app-page .lab-shop-records{
   width:100%;
-  min-height:86px;
+  min-height:54px;
   align-items:center;
-  padding:0 4px!important;
+  padding:6px 2px!important;
   border:0;
   background:transparent;
   text-align:left;
 }
 .app-page .lab-shop-records span{
-  justify-content:center;
+  justify-content:flex-start;
 }
 .settings-group-heading h2{
   display:none!important;

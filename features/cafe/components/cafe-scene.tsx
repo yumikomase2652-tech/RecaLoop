@@ -5,6 +5,7 @@ import { cafeSlotLayouts } from "../data/mock-slots";
 import { cafeVisitors } from "../data/mock-visitors";
 import type { CafePlacement, CafeSceneMode, CafeSlot, CafeTheme, CafeVisit } from "../types/cafe";
 import styles from "./cafe.module.css";
+import { CafeItemSprite, CafeVisitorSprite } from "./cafe-sprites";
 
 type CafeSceneProps = {
   mode: CafeSceneMode;
@@ -57,7 +58,9 @@ export function CafeScene({ mode, theme, slotLayoutId, placements, visits = [], 
           if (!visitor) return null;
           return (
             <div className={styles.visitor} key={visit.id} style={visitorPosition(index)}>
-              <span className={styles.visitorVisual} data-key={visitor.imageKey} />
+              <span className={styles.visitorVisual} data-key={visitor.imageKey}>
+                <CafeVisitorSprite imageKey={visitor.imageKey} />
+              </span>
               {mode !== "preview" && <span className={styles.visitorName}>{visitor.name}</span>}
             </div>
           );
@@ -70,7 +73,9 @@ export function CafeScene({ mode, theme, slotLayoutId, placements, visits = [], 
           if (!slot || !item) return null;
           return (
             <div className={styles.placedItem} key={`${placement.slotId}:${placement.itemId}`} style={positionStyle(slot)}>
-              <span className={styles.itemVisual} data-key={item.imageKey} />
+              <span className={styles.itemVisual} data-key={item.imageKey}>
+                <CafeItemSprite imageKey={item.imageKey} />
+              </span>
               {mode === "editor" && <span className={styles.itemName}>{item.name}</span>}
             </div>
           );

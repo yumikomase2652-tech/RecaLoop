@@ -1,0 +1,178 @@
+.screen {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+  color: var(--color-text, #17334a);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  min-height: 48px;
+}
+
+.header button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--color-text, #17334a);
+}
+
+.header h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 18px;
+  background: rgba(120, 132, 144, 0.12);
+}
+
+.segmented button {
+  min-height: 38px;
+  border-radius: 14px;
+  color: color-mix(in srgb, var(--color-text, #17334a), transparent 25%);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.segmented button[data-active="true"] {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--color-text, #17334a);
+  box-shadow: 0 1px 3px rgba(20, 30, 40, 0.08);
+}
+
+.timerCard {
+  min-height: min(55dvh, 430px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 34px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(23, 51, 74, 0.08);
+}
+
+.digitalFace,
+.visualFace,
+.cafeFace {
+  display: grid;
+  place-items: center;
+  gap: 12px;
+}
+
+.digitalFace strong,
+.visualFace strong,
+.cafeFace b {
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(48px, 16vw, 96px);
+  line-height: 1;
+  font-weight: 800;
+}
+
+.digitalFace span {
+  color: #718398;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.visualFace {
+  position: relative;
+}
+
+.visualFace svg {
+  width: min(58vw, 260px);
+  max-width: 260px;
+}
+
+.visualFace circle {
+  fill: none;
+  stroke: rgba(120, 132, 144, 0.12);
+  stroke-width: 14;
+}
+
+.visualFace circle + circle {
+  stroke: var(--color-accent, #f2a23a);
+  stroke-dasharray: 452;
+  stroke-dashoffset: 452;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 90px 90px;
+  transition: stroke-dashoffset 0.35s ease;
+}
+
+.visualFace strong {
+  position: absolute;
+  font-size: clamp(34px, 10vw, 58px);
+}
+
+.cafeFace {
+  width: min(92%, 420px);
+}
+
+.cafeFace > div {
+  width: 100%;
+}
+
+.cafeFace b {
+  margin-top: -6px;
+  font-size: clamp(34px, 11vw, 62px);
+}
+
+.controls {
+  position: sticky;
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 52px;
+  gap: 10px;
+  align-items: center;
+}
+
+.controls button,
+.coffeeMark {
+  min-height: 52px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.mainButton {
+  background: var(--color-text, #17334a);
+  color: #fff;
+}
+
+.resetButton,
+.coffeeMark {
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--color-text, #17334a);
+  border: 1px solid rgba(23, 51, 74, 0.08);
+}
+
+@media (max-width: 520px) {
+  .screen {
+    gap: 12px;
+  }
+
+  .timerCard {
+    min-height: calc(100dvh - 300px);
+    border-radius: 30px;
+  }
+
+  .controls {
+    bottom: calc(86px + env(safe-area-inset-bottom));
+    grid-template-columns: 1fr 1.25fr 48px;
+  }
+}
